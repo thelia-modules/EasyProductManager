@@ -20,7 +20,7 @@ Thelia >= 2.3
 Add it in your main thelia composer.json file
 
 ```
-composer require thelia/easy-product-manager:~1.3.0
+composer require thelia/easy-product-manager:~2.1.1
 ```
 
 ## Screenshot

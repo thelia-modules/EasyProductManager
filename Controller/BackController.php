@@ -1,15 +1,4 @@
 <?php
-/*************************************************************************************/
-/*      This file is part of the module EasyProductManager.                          */
-/*                                                                                   */
-/*      Copyright (c) Gilles Bourgeat                                                */
-/*      email : gilles.bourgeat@gmail.com                                            */
-/*                                                                                   */
-/*      This module is not open source                                               /*
-/*      please contact gilles.bourgeat@gmail.com for a license                       */
-/*                                                                                   */
-/*                                                                                   */
-/*************************************************************************************/
 
 namespace EasyProductManager\Controller;
 
@@ -41,6 +30,9 @@ use Thelia\TaxEngine\Calculator;
 use Thelia\Tools\MoneyFormat;
 use Thelia\Tools\URL;
 
+/**
+ * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
+ */
 class BackController extends ProductController
 {
     public function productAction(Request $request, $productId)
