@@ -1,21 +1,13 @@
 <?php
-/*************************************************************************************/
-/*      This file is part of the module EasyProductManager.                          */
-/*                                                                                   */
-/*      Copyright (c) Gilles Bourgeat                                                */
-/*      email : gilles.bourgeat@gmail.com                                            */
-/*                                                                                   */
-/*      This module is not open source                                               /*
-/*      please contact gilles.bourgeat@gmail.com for a license                       */
-/*                                                                                   */
-/*                                                                                   */
-/*************************************************************************************/
 
 namespace EasyProductManager\Hook;
 
 use Thelia\Core\Event\Hook\HookRenderEvent;
 use Thelia\Core\Hook\BaseHook;
 
+/**
+ * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
+ */
 class BackHook extends BaseHook
 {
     public function onMainInTopMenuItems(HookRenderEvent $event)

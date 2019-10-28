@@ -5,9 +5,7 @@ namespace EasyProductManager;
 use Thelia\Module\BaseModule;
 
 /**
- * Class EasyProductManager
- * @package EasyProductManager
- * @author
+ * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
  */
 class EasyProductManager extends BaseModule
 {

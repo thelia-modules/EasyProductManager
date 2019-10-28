@@ -1,3 +1,6 @@
+2.1.1
+- fix version
+
 2.1.0
 - public MIT version, Open Source <3
 
