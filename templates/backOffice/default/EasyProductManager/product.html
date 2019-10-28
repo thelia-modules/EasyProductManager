@@ -1,0 +1,553 @@
+{* -- Declare assets directory, relative to template base directory --------- *}
+{declare_assets directory='assets'}
+
+{* Set the default translation domain, that will be used by {intl} when the 'd' parameter is not set *}
+{default_translation_domain domain='bo.default'}
+
+{block name="check-resource"}admin.product{/block}
+{block name="check-access"}view{/block}
+
+{loop type="product" name="product" id=$product_id backend_context="1" limit=1 visible="*"}
+<div class="form-container">
+    {$has_at_least_one_combination = false}
+    {$default_product_sale_element_id = 0}
+
+    {loop name="product.sales.elements.test" type="product_sale_elements" product=$product_id currency=$edit_currency_id backend_context="1"}
+    {loop name="product.combinations" type="attribute_combination" product_sale_elements="$ID"}
+    {$has_at_least_one_combination = true}
+    {/loop}
+
+    {elseloop rel="product.combinations"}
+    {$default_product_sale_element_id = $ID}
+    {/elseloop}
+    {/loop}
+
+    {if $has_at_least_one_combination == false}
+        {form name="thelia.admin.product_default_sale_element.update"}
+            <form method="POST" action="{url path='/admin/product/default-price/update'}" {form_enctype} class="clearfix">
+
+                {include
+                file = "includes/inner-form-toolbar.html"
+                hide_submit_buttons = false
+                show_currencies = false
+                hide_flags = true
+                hide_save_and_close_button = true
+
+                page_url  = "{url path='/admin/products/update' product_id=$ID}"
+                close_url = "#"
+                }
+
+                {* Be sure to get the product ID and current tab, even if the form could not be validated *}
+                <input type="hidden" name="product_id" value="{$product_id}" />
+                <input type="hidden" name="current_tab" value="prices" />
+
+                {form_hidden_fields}
+
+                {form_field field='product_id'}
+                    <input type="hidden" name="{$name}" value="{$value}" />
+                {/form_field}
+
+                {form_field field='product_sale_element_id'}
+                    <input type="hidden" name="{$name}" value="{$default_product_sale_element_id}" />
+                {/form_field}
+
+                {form_field field='isdefault'}
+                    <input type="hidden" name="{$name}" value="{$value}" />
+                {/form_field}
+
+                {form_field field='reference'}
+                    <input type="hidden" name="{$name}" value="{$value}" />
+                {/form_field}
+
+                {form_field field='success_url'}
+                    <input type="hidden" name="{$name}" value="{url path='/admin/categories' category_id=$DEFAULT_CATEGORY}" />
+                {/form_field}
+
+                {loop type="currency" name="product-currency" id=$edit_currency_id backend_context="1"}
+
+                {$currency_symbol = $SYMBOL}
+                {$currency_name = $NAME}
+
+                {form_field field='currency'}
+                    <input type="hidden" name="{$name}" value="{$ID}" />
+                {/form_field}
+
+                {$current_currency_is_default = $IS_DEFAULT}
+                {/loop}
+
+
+                {if $form_error}
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="alert alert-danger">{$form_error_message}</div>
+                        </div>
+                    </div>
+                {/if}
+
+                <div class="row">
+                    <div class="col-md-4 hide">
+                        {form_field field='tax_rule'}
+                            <div class="form-group {if $error}has-error{/if}">
+                                <label for="tax_rule_field" class="control-label">{$label} : </label>
+                                <div class="form-group">
+                                    <select id="tax_rule_field" required="required" name="{$name}" class="form-control">
+                                        <option value="">{intl l="Select a tax tule"}</option>
+                                        {loop name="tax" type="tax-rule" backend_context="1"}
+                                            <option value="{$ID}" {if $ID == $TAX_RULE_ID}selected="selected"{/if}>{$TITLE}</option>
+                                        {/loop}
+                                    </select>
+                                </div>
+                            </div>
+                        {/form_field}
+                    </div>
+                </div>
+
+                <p class="title title-without-tabs">{intl l='Pricing'}</p>
+
+                <p>{intl l="The default pricing is used when no combination is defined."}</p>
+
+                <div class="row">
+
+                    {* -- Pricing ------------------------------------------------------- *}
+
+                    <div class="col-md-4">
+                        <div class="well well-sm">
+                            <p class="title title-without-tabs">{intl l='Pricing'}</p>
+
+                            <p></p> <!-- LAME !!! FIXME -->
+
+                            {form_field field='use_exchange_rate'}
+                            {if $current_currency_is_default}
+                                <input type="hidden" name="{$name}" value="0">
+                                {$show_pricing_fields = true}
+                            {else}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" data-pse-id="{$default_product_sale_element_id}" class="use_exchange_rate_box" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}>
+                                            {$label}
+                                        </label>
+                                    </div>
+                                </div>
+                                {$show_pricing_fields = ($value == 0)}
+                            {/if}
+                            {/form_field}
+
+                            {form_field field='price'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <label for="price_without_tax" class="control-label">{$label} : </label>
+
+                                    <div class="input-group">
+                                        <input {if !$show_pricing_fields}readonly{/if} data-pse-id="{$default_product_sale_element_id}" data-price-type="price-without-tax" data-rel-price="price_with_tax" type="text" id="price_without_tax" required="required" name="{$name}" class="price_field automatic_price_field form-control" value="{$value}" title="{$label}" placeholder="{intl l='Price excl. taxes'}">
+                                        <span class="input-group-addon">{$currency_symbol}</span>
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='price_with_tax'}
+                                <div class="form-group">
+                                    <label for="price_with_tax" class="control-label">{intl l="Product price including taxes"} : </label>
+                                    <div class="input-group">
+                                        <input {if !$show_pricing_fields}readonly{/if} data-pse-id="{$default_product_sale_element_id}" data-price-type="price-with-tax" data-rel-price="price_without_tax" type="text" id="price_with_tax" name="{$name}" class="price_field automatic_price_field form-control" value="{$value}" title="{$value}" placeholder="{intl l='Price incl. taxes'}">
+                                        <span class="input-group-addon">{$currency_symbol}</span>
+                                    </div>
+                                </div>
+                            {/form_field}
+                        </div>
+                    </div>
+
+
+                    {* -- Détails -------------------------------------------------- *}
+
+                    <div class="col-md-4">
+                        <div class="well well-sm">
+                            <p class="title title-without-tabs">{intl l='Stock'}</p>
+
+                            {form_field field='ean_code'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <label for="{$label_attr.for}" class="control-label">{$label} : </label>
+
+                                    <div class="form-group">
+                                        <input type="text" id="{$label_attr.for}" name="{$name}" class="form-control" value="{$value}" title="{$label}" placeholder="{intl l='Product EAN Code'}">
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='weight'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <label for="{$label_attr.for}" class="control-label">{$label} : </label>
+
+                                    <div class="input-group">
+                                        <input type="text" id="{$label_attr.for}" name="{$name}" class="form-control" value="{$value}" title="{$label}" placeholder="{intl l='Product weight'}">
+                                        <span class="input-group-addon">{intl l="Kg"}</span>
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='quantity'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <label for="{$label_attr.for}" class="control-label">{$label} : </label>
+
+                                    <div class="form-group">
+                                        <input type="text" id="{$label_attr.for}" required="required" name="{$name}" class="form-control" value="{$value}" title="{$label}" placeholder="{intl l='Current quantity'}">
+                                    </div>
+                                </div>
+                            {/form_field}
+                        </div>
+                    </div>
+
+
+                    {* -- Promotion ------------------------------------------------- *}
+
+                    <div class="col-md-4">
+                        <div class="well well-sm">
+                            <p class="title title-without-tabs">{intl l='Promotion'}</p>
+
+                            {form_field field='sale_price'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <label for="sale_price_without_tax" class="control-label">{$label} : </label>
+
+                                    <div class="input-group">
+                                        <input {if !$show_pricing_fields}readonly{/if} data-pse-id="{$default_product_sale_element_id}" data-price-type="sale-price-without-tax" data-rel-price="sale_price_with_tax" type="text" id="sale_price_without_tax" required="required" name="{$name}" class="price_field automatic_price_field form-control" value="{$value}" title="{$label}" placeholder="{intl l='Product price'}">
+                                        <span class="input-group-addon">{$currency_symbol}</span>
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='sale_price_with_tax'}
+                                <div class="form-group">
+                                    <label for="sale_price_with_tax" class="control-label">{$label} : </label>
+                                    <div class="input-group">
+                                        <input {if !$show_pricing_fields}readonly{/if} data-pse-id="{$default_product_sale_element_id}" data-price-type="sale-price-with-tax" data-rel-price="sale_price_without_tax" type="text" id="sale_price_with_tax" name="sale_price_with_tax" class="price_field automatic_price_field form-control" value="{$value}" title="{$label}" placeholder="{intl l='Sale price incl. taxes'}">
+                                        <span class="input-group-addon">{$currency_symbol}</span>
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='onsale'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" id="{$label_attr.for}" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}>
+                                            {$label}
+                                        </label>
+                                    </div>
+                                </div>
+                            {/form_field}
+
+                            {form_field field='isnew'}
+                                <div class="form-group {if $error}has-error{/if}">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" id="{$label_attr.for}" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}>
+                                            {$label}
+                                        </label>
+                                    </div>
+                                </div>
+                            {/form_field}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        {/form}
+    {/if}
+
+    {* -- Attribute combinations -------------------------------------------- *}
+
+    {if $has_at_least_one_combination}
+
+        {form name="thelia.admin.product_sale_element.update"}
+            <form method="POST" action="{url path='/admin/product/combinations/update'}" {form_enctype}>
+                <div class="row">
+                    <div class="col-md-12">
+
+                        {include
+                        file = "includes/inner-form-toolbar.html"
+                        hide_submit_buttons = false
+                        show_currencies = false
+                        hide_flags = true
+                        hide_save_and_close_button = true
+                        page_url  = "{url path='/admin/products/update' product_id=$ID}"
+                        close_url = "#"
+                        }
+
+                        {* Be sure to get the product ID and current tab, even if the form could not be validated *}
+                        <input type="hidden" name="product_id" value="{$product_id}" />
+                        <input type="hidden" name="current_tab" value="prices" />
+
+                        {form_hidden_fields}
+
+                        {form_field field='product_id'}
+                            <input type="hidden" name="{$name}" value="{$value}" />
+                        {/form_field}
+
+                        {form_field field='success_url'}
+                            <input type="hidden" name="{$name}" value="{url path='/admin/categories' category_id=$DEFAULT_CATEGORY}" />
+                        {/form_field}
+
+                        {if $form_error}<div class="alert alert-danger">{$form_error_message}</div>{/if}
+
+                        {loop type="currency" name="get-currency-symbol" id=$edit_currency_id backend_context="1"}
+                        {$currency_symbol = $SYMBOL}
+                        {$current_currency_is_default = $IS_DEFAULT}
+
+                        {form_field field='currency'}
+                            <input type="hidden" name="{$name}" value="{$ID}" />
+                        {/form_field}
+                        {/loop}
+
+                        <div class="row">
+                            <div class="col-md-4 hide">
+                                {form_field field='tax_rule'}
+                                    <div class="form-group {if $error}has-error{/if}">
+                                        <label for="tax_rule_field" class="control-label">{$label} : </label>
+                                        <div class="form-group">
+                                            <select id="tax_rule_field" required="required" name="{$name}" class="form-control">
+                                                <option value="">{intl l="Select a tax tule"}</option>
+                                                {loop name="tax" type="tax-rule" backend_context="1"}
+                                                    <option value="{$ID}" {if $ID == $TAX_RULE_ID}selected="selected"{/if}>{$TITLE}</option>
+                                                {/loop}
+                                            </select>
+                                        </div>
+                                    </div>
+                                {/form_field}
+                            </div>
+                            <div class="col-md-4">
+                                {form_field field='use_exchange_rate'}
+                                {if $current_currency_is_default}
+                                    <input type="hidden" name="{$name}" value="0">
+                                    {$show_pricing_fields = true}
+                                {else}
+                                    <div class="form-group {if $error}has-error{/if}">
+                                        <label>&nbsp;</label>
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="use_exchange_rate_box" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}>
+                                                {$label}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {$show_pricing_fields = ($value == 0)}
+                                {/if}
+                                {/form_field}
+                            </div>
+                        </div>
+
+                        <table class="table table-striped table-condensed table-responsive" id="combinations_list">
+
+                            <thead>
+                            <tr>
+                                <th class="col-sm-2 text-center">{intl l='Reference'}</th>
+                                <th class="col-sm-2 text-center">{intl l='EAN Code'}</th>
+                                <th class="col-sm-1 text-center">{intl l='Stock'}</th>
+                                <th class="col-sm-1 text-center"><small>{intl l='Price (%currency)<br />w/o taxes' currency={$currency_symbol}}</small></th>
+                                <th class="col-sm-1 text-center"><small>{intl l='Price (%currency)<br />w/ taxes' currency={$currency_symbol}}</small></th>
+                                <th class="col-sm-1 text-center"><small>{intl l='Weight<br />(Kg)'}</small></th>
+                                <th class="text-center"><small>{intl l='Default'}</small></th>
+                                <th class="text-center"><small>{intl l='Sale'}</small></th>
+                                <th class="text-center"><small>{intl l='New'}</small></th>
+                                <th class="col-sm-1 text-center"><small>{intl l='Sale price (%currency)<br />w/o taxes' currency={$currency_symbol}}</small></th>
+                                <th class="col-sm-1 text-center"><small>{intl l='Sale price (%currency)<br />w/ taxes' currency={$currency_symbol}}</small></th>
+                            </tr>
+                            </thead>
+
+                            <tbody>
+                            {* Get number of PSE defined, assume the form have the same number of values for each fields *}
+
+                            {form_field field='product_sale_element_id' value_key=0}
+                            {$pse_count = $total_value_count}
+                            {/form_field}
+
+                            {for $idx = 0 to $total_value_count-1}
+                                <tr>
+                                    <td colspan="10">
+
+                                        {form_field field='product_sale_element_id' value_key=$idx}
+                                            <input type="hidden" name="{$name}" value="{$value}" />
+                                        {$current_pse_id = $value}
+                                        {/form_field}
+
+                                        {assign var='combination_list' value=array()}
+                                        {loop name="product.sales.elements.combinations" type="attribute_combination" product_sale_elements=$current_pse_id backend_context="1" order="manual"}
+                                        {$combination_list[$ATTRIBUTE_TITLE][] = $ATTRIBUTE_AVAILABILITY_TITLE}
+                                        {/loop}
+
+                                        {format_array_2d values=$combination_list}
+                                    </td>
+
+                                    <td class="text-right">ID: {$current_pse_id}</td>
+                                </tr>
+
+                                <tr>
+                                    {form_field field='reference' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}><input class="form-control input-sm" type="text" name="{$name}" value="{$value}" /></td>
+                                    {/form_field}
+
+                                    {form_field field='ean_code' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}><input class="form-control input-sm" type="text" name="{$name}" value="{$value}" /></td>
+                                    {/form_field}
+
+                                    {form_field field='quantity' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}>
+                                            <input class="form-control input-sm text-right" required type="text" name="{$name}" value="{$value}" />
+                                        </td>
+                                    {/form_field}
+
+                                    {form_field field='price' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}><input {if !$show_pricing_fields}readonly{/if} required data-price-type="price-without-tax" data-rel-price="price_with_tax_{$idx}" id="price_without_tax_{$idx}" class="price_field automatic_price_field form-control text-right input-sm" required type="text" name="{$name}" value="{$value}" /></td>
+                                    {/form_field}
+
+                                    {form_field field='price_with_tax' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}><input {if !$show_pricing_fields}readonly{/if} data-price-type="price-with-tax" data-rel-price="price_without_tax_{$idx}" id="price_with_tax_{$idx}" class="price_field automatic_price_field form-control text-right input-sm" type="text" name="{$name}" value="{$value}" /></td>
+                                    {/form_field}
+
+                                    {form_field field='weight' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}><input class="form-control text-right input-sm" type="text" name="{$name}" value="{$value}" /></td>
+                                    {/form_field}
+
+
+                                    {form_field field='default_pse'}
+                                        <td class="{if $error}has-error {/if}text-center">
+                                            <input class="input-sm" type="radio" name="{$name}" value="{$current_pse_id}" {if $value == $current_pse_id}checked="checked"{/if}/>
+                                        </td>
+                                    {/form_field}
+
+                                    {form_field field='onsale' value_key=$idx}
+                                        <td class="{if $error}has-error {/if}text-center">
+                                            <input class="input-sm" type="checkbox" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}/>
+                                        </td>
+                                    {/form_field}
+
+                                    {form_field field='isnew' value_key=$idx}
+                                        <td class="{if $error}has-error {/if}text-center">
+                                            <input class="input-sm" type="checkbox" name="{$name}" value="1" {if $value != 0}checked="checked"{/if}/>
+                                        </td>
+                                    {/form_field}
+
+                                    {form_field field='sale_price' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}>
+                                            <input {if !$show_pricing_fields}readonly{/if} required data-price-type="sale-price-without-tax" data-rel-price="sale_price_with_tax_{$idx}" id="sale_price_without_tax_{$idx}" class="price_field automatic_price_field form-control text-right input-sm" type="text" name="{$name}" value="{$value}"  />
+                                        </td>
+                                    {/form_field}
+
+                                    {form_field field='sale_price_with_tax' value_key=$idx}
+                                        <td {if $error}class="has-error"{/if}>
+                                            <input {if !$show_pricing_fields}readonly{/if} data-price-type="sale-price-with-tax" data-rel-price="sale_price_without_tax_{$idx}" id="sale_price_with_tax_{$idx}" class="price_field automatic_price_field form-control text-right input-sm" type="text" name="{$name}" value="{$value}"  />
+                                        </td>
+                                    {/form_field}
+                                </tr>
+
+                            {/for}
+                            </tbody>
+                        </table>
+
+
+                        {include
+                        file = "includes/inner-form-toolbar.html"
+                        hide_submit_buttons = false
+                        show_currencies = false
+                        hide_flags = true
+                        hide_save_and_close_button = true
+                        page_url  = "{url path='/admin/products/update' product_id=$ID}"
+                        close_url = "#"
+                        }
+
+                    </div>
+                </div>
+
+            </form>
+        {/form}
+    {/if}
+</div>
+{/loop}
+
+{javascripts file='assets/js/jquery.typewatch.js'}
+    <script src="{$asset_url}"></script>
+{/javascripts}
+
+<script>
+    // In proces tab, process exchange rate usage checkbox changes
+    $('.use_exchange_rate_box').change(function(ev) {
+
+        if ($(this).is(':checked')) {
+
+            var pse_id = $(this).data('pse-id');
+
+            $('.price_field').prop('readonly', true);
+
+            // Reload prices
+            $.ajax({
+                url      : '{url path="/admin/product/load-converted-prices"}',
+                data     : {
+                    product_sale_element_id : pse_id,
+                    currency_id             : {$edit_currency_id}
+                },
+                type     : 'get',
+                dataType : 'json',
+                success  : function(json) {
+                    $('input[data-pse-id="'+pse_id+'"][data-price-type="price-with-tax"]').val(json.price_with_tax);
+                    $('input[data-pse-id="'+pse_id+'"][data-price-type="price-without-tax"]').val(json.price_without_tax);
+                    $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-with-tax"]').val(json.sale_price_with_tax);
+                    $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-without-tax"]').val(json.sale_price_without_tax);
+                },
+                error : function(jqXHR, textStatus, errorThrown) {
+                    alert("{intl l='Failed to get converted prices. Please try again.'} (" +errorThrown+ ")");
+                }
+            });
+
+        }
+        else {
+            $('.price_field').prop('readonly', false)
+        }
+    });
+
+    function update_price(price, price_type, dest_field_id) {
+        var tax_rule_id = $('#tax_rule_field').val();
+
+        if (tax_rule_id != "") {
+
+            var operation;
+
+            if (price_type.indexOf('with-tax') != -1)
+                operation = 'from_tax';
+            else if (price_type.indexOf('without-tax') != -1)
+                operation = 'to_tax';
+            else
+                operation = '';
+
+            $.ajax({
+                url      : '{url path="/admin/product/calculate-price"}',
+                data     : {
+                    price      : price,
+                    action     : operation,
+                    product_id : {$product_id}
+                },
+                type     : 'get',
+                dataType : 'json',
+                success  : function(json) {
+                    $('#' + dest_field_id).val(json.result);
+                },
+                error : function(jqXHR, textStatus, errorThrown) {
+                    alert("{intl l='Failed to get prices. Please try again.'} (" +errorThrown+ ")");
+                }
+            });
+        }
+    }
+
+    // Automatic update of price fields: any change in the taxed (resp. untaxed) price
+    // will update the untaxed (resp. taxed) one
+    $('.automatic_price_field').typeWatch({
+        captureLength: 1,
+        wait         : 300,
+        callback     : function () {
+            var price = $(this).val();
+            $(this).val(sanitizeFloat(price));
+            update_price($(this).val(), $(this).data('price-type'), $(this).data('rel-price'));
+        }
+    });
+
+    function sanitizeFloat(numVal) {
+        return numVal.replace(",", ".");
+    }
+
+</script>
