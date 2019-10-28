@@ -1,0 +1,758 @@
+{extends file="admin-layout.tpl"}
+
+{block name="check-resource"}admin.product{/block}
+{block name="check-access"}view{/block}
+{block name="page-title"}Gestion des produits avec EasyProductManager{/block}
+
+{block name="after-admin-css"}
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-css/1.4.6/select2-bootstrap.min.css" rel="stylesheet" />
+    <style>
+        {literal}
+        .js-list {
+            width: 100% !important;
+        }
+        .js-animate-info-button {
+            animation: AnimateInfoButton 2s infinite;
+        }
+        @keyframes AnimateInfoButton{
+            0%{opacity: 1;}
+            50%{opacity: 0;}
+            100%{opacity: 1;}
+        }
+        {/literal}
+    </style>
+{/block}
+
+{block name="main-content"}
+    <div id="module-easy-product-manager">
+
+        <div id="wrapper" class="container">
+
+          <div class="row">
+            <div class="col-md-12 general-block-decorator">
+
+                <div class="row">
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-search">Rechercher</label>
+                            <input type="text" class="form-control js-refresh-table" data-default="" id="js-input-search" placeholder="Votre recherche">
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="form-group">
+                            <label for="js-input-category" class="control-label">
+                                Filtrer par catégorie :
+                            </label>
+
+                            <select id="js-input-category" class="form-control js-refresh-table" data-default="">
+                                <option value="">Aucune catégorie filtré</option>
+
+                                {loop name="cat-parent" type="category-tree" category="0" visible="*" product="0" return_url=false}
+                                    <option value="{$ID}" >{option_offset l=$LEVEL+1 label={$TITLE}}</option>
+                                {/loop}
+
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="form-group">
+                            <label for="js-input-brand" class="control-label">
+                                Filtrer par marque :
+                            </label>
+
+                            <select id="js-input-brand" class="form-control js-refresh-table" data-default="">
+                                <option value="">Aucune marque filtré</option>
+
+                                {loop name="brand" type="brand" visible="*" return_url=false}
+                                    <option value="{$ID}" >{$TITLE}</option>
+                                {/loop}
+
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-auto-refresh">AutoRefresh</label>
+                            <select id="js-input-auto-refresh" class="form-control">
+                                <option value="0">Désactivé</option>
+                                <option value="1">Activé</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-auto-refresh-interval">Intervalle</label>
+                            <div class="input-group">
+                                <input id="js-input-auto-refresh-interval" class="form-control" value="30" min="10" type="number"/>
+                                <div class="input-group-addon">seconde</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-promotion">En promotion</label>
+                            <select id="js-input-promotion" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">Oui / Non</option>
+                                <option value="1">Oui</option>
+                                <option value="2">Non</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                       <div class="form-group">
+                            <label for="js-input-newness">Nouveauté</label>
+                            <select id="js-input-newness" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">Oui / Non</option>
+                                <option value="1">Oui</option>
+                                <option value="2">Non</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-1 filter">
+                        <div class="form-group">
+                            <label for="js-input-quantity-min">Qt min</label>
+                            <input type="number" step="1" class="form-control js-refresh-table" data-default="" id="js-input-quantity-min" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="col-md-1 filter">
+                        <div class="form-group">
+                            <label for="js-input-quantity-max">Qt max</label>
+                            <input type="number" step="1" class="form-control js-refresh-table" data-default="" id="js-input-quantity-max" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-visible">En ligne / Hors ligne</label>
+                            <select id="js-input-visible" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">En ligne / Hors ligne</option>
+                                <option value="1">En ligne</option>
+                                <option value="2">Hors ligne</option>
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-lang">Language</label>
+                            <select id="js-input-lang" class="form-control js-refresh-table">
+                                {loop type="lang" name="lang"}
+                                    <option value="{$ID}" {if $IS_DEFAULT}selected{/if}>{$TITLE}</option>
+                                {/loop}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-country">Pays de livraison</label>
+                            <select id="js-input-country" class="form-control js-refresh-table">
+                                {loop type="country" name="country" visible=true}
+                                    <option value="{$ID}" {if $IS_DEFAULT}selected{/if}>{$TITLE}</option>
+                                {/loop}
+                            </select>
+                        </div>
+                    </div>
+
+
+
+                    <div class="col-md-5 filter">
+                        <div class="form-group">
+                            <label for="js-input-length">Caractéristiques</label>
+                            <select id="js-input-feature" class="form-control js-refresh-table" data-default="" multiple="multiple">
+                                {loop type="feature" name="feature" visible="*" order="manual"}
+                                 {$featureTitle = $TITLE}
+                                <optgroup label="{$TITLE}">
+                                    {loop type="feature-availability" name="feature_availability" visible="*" order="manual" feature=$ID}
+                                    <option value="{$ID}">{$featureTitle} - {$TITLE}</option>
+                                    {/loop}
+                                </optgroup>
+                                {/loop}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-5 filter">
+                        <div class="form-group">
+                            <label for="js-input-length">Attributs</label>
+                            <select id="js-input-attribute" class="form-control js-refresh-table" data-default="" multiple="multiple">
+                                {loop type="attribute" name="attribute" visible="*" order="manual"}
+                                {$attributeTitle = $TITLE}
+                                <optgroup label="{$TITLE}">
+                                    {loop type="attribute_availability" name="attribute_availability" visible="*" order="manual" attribute=$ID}
+                                    <option value="{$ID}">{$attributeTitle} - {$TITLE}</option>
+                                    {/loop}
+                                </optgroup>
+                                {/loop}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-length">Nombre d'éléments</label>
+                            <select id="js-input-length" class="form-control js-refresh-table">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-12 filter">
+                        <table class="js-list table table-striped table-bordered">
+                            <thead>
+                            <tr>
+                                {foreach from=$columnsDefinition item=definition}
+                                    <td>
+                                        {$definition.title}
+                                    </td>
+                                {/foreach}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Modal Edit -->
+        <div class="modal fade" id="modal-edit-product" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Editer le produit</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body js-loader">
+                        <div class="text-center">
+                            Veuillez patienter ...
+                        </div>
+                    </div>
+                    <div class="modal-body js-content">
+
+                    </div>
+                    <div class="modal-body js-error">
+                        <div class="alert alert-error">
+                            Une erreur s'est produite
+                        </div>
+                    </div>
+                    <div class="modal-body js-success">
+                        <div class="alert alert-success">
+                            Informations sauvegardées avec succès
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    {capture name="product_delete_dialog"}
+        <input type="hidden" name="product_id" id="product_delete_id" value="" />
+        <input type="hidden" name="category_id" value="1" />
+        <input type="hidden" name="page" value="1" />
+    {/capture}
+
+    {include
+        file = "includes/generic-confirm-dialog.html"
+
+        dialog_id       = "product_delete_dialog"
+        dialog_title    = {intl l="Delete product"}
+        dialog_message  = {intl l="Do you really want to delete this product and all it's components (images, documents)?<br>This can't be canceled."}
+
+        form_action         = {token_url path='/admin/products/delete'}
+        form_content        = {$smarty.capture.product_delete_dialog nofilter}
+    }
+
+    </div>
+{/block}
+
+{block name="javascript-last-call"}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap.min.js"></script>
+
+    <script>
+        "use strict";
+        (function($, $module){
+            //$.fn.select2.defaults.set( "theme", "bootstrap" );
+
+            $( "#js-input-feature" ).select2( {
+                placeholder: 'Filter par caractéristique'
+            } );
+
+            $( "#js-input-attribute" ).select2( {
+                placeholder: 'Filtrer par attribut'
+            } );
+
+            $( "#js-input-category" ).select2();
+
+            $( "#js-input-brand" ).select2();
+
+            var currencySymbol = '{$currencySymbol}';
+
+            var popoverPosition = null,
+                $modalDelete = $module.find('#product_delete_dialog');
+
+
+            var table = $module.find('.js-list').DataTable( {
+                processing: true,
+                serverSide: true,
+                searching: false,
+                lengthChange: false,
+                order: [[ 0, "desc" ]],
+                drawCallback:function (oSettings) {
+                    //console.log(oSettings);
+                },
+                ajax: {
+                    ajax: "{url current=true}",
+                    method: 'POST',
+                    data: function (data) {
+                        resetPopoverPosition();
+
+                        data.filter = {
+                            country: $module.find('#js-input-country').val(),
+                            lang: $module.find('#js-input-lang').val(),
+                            category: $module.find('#js-input-category').val(),
+                            brand: $module.find('#js-input-brand').val(),
+                            visible: $module.find('#js-input-visible').val(),
+                            newness: $module.find('#js-input-newness').val(),
+                            promotion: $module.find('#js-input-promotion').val(),
+                            quantity: {
+                                min: $module.find('#js-input-quantity-min').val(),
+                                max: $module.find('#js-input-quantity-max').val()
+                            },
+                            search: $module.find('#js-input-search').val(),
+                            attributes: $module.find('#js-input-attribute').val(),
+                            features: $module.find('#js-input-feature').val()
+                        };
+
+                        data.search = {
+                            "value": $module.find('#js-input-search').val(),
+                            regex: false
+                        };
+
+                        data.length = $module.find('#js-input-length').val();
+                    }
+                },
+                displayLength: 25,
+                columnDefs: {$columnsDefinition|@json_encode nofilter}.concat([
+                    {
+                        targets: [0,1],
+                        responsivePriority: 4
+                    },
+                    {
+                        className: "text-center",
+                        targets: 1,
+                        render: function ( data, type, row, meta ) {
+                            var href = row[9] + '&current_tab=images';
+
+                            if (data !== '') {
+                                return '<a href="' + href + '"><img src="' + data + '" style="width: 50px; height: 50px;" /></a>'
+                            }
+
+                            return '<a href="' + href + '" style="line-height:50px;text-align:center;width: 50px; height: 50px;">Aucune</a>';
+                        }
+                    },
+                    {
+                        targets: [0, 2, 3],
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="' + row[9] + '">' + data + '</a>'
+                        }
+                    },
+                    {
+                        className: "text-center",
+                        targets: 4,
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="#" class="js-edit-price">' + data[0] + ' HT</a>'
+                            + '<br/>'
+                            + '<a href="#" class="js-edit-price">' + data[1] + ' TTC</a>';
+                        },
+                        responsivePriority: 3
+                    },
+                    {
+                        className: "text-center",
+                        targets: 5,
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="#" class="js-edit-price">' + data[0] + ' HT</a>'
+                                + '<br/>'
+                                + '<a href="#" class="js-edit-price">' + data[1] + ' TTC</a>';
+                        },
+                        createdCell: function(td, cellData, rowData, row, col) {
+                            if (parseInt(cellData[2])) {
+                                td.style.backgroundColor = 'rgba(255, 128, 0,0.1)';
+                            }
+                        }
+                    },
+                    {
+                        className: "text-center",
+                        targets: 6,
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="#" class="js-edit-quantity">' + data + '</a>';
+                        },
+                        createdCell: function(td, cellData, rowData, row, col) {
+                            td.style.backgroundColor = parseInt(cellData) ? 'rgba(0,255,0,0.1)' : 'rgba(255,0,0,0.1)';
+                        }
+                    },
+                    {
+                        className: "text-center",
+                        targets: 7,
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="#" class="js-action-position-up"><i class="glyphicon glyphicon-arrow-up"></i></a>' +
+                                '&nbsp;&nbsp;<a href="#" class="js-action-position">' + data + '</a>&nbsp;&nbsp;' +
+                                '<a href="#" class="js-action-position-down"><i class="glyphicon glyphicon-arrow-down"></i></a>';
+                        },
+                        visible: false
+                    },
+                    {
+                        className: "text-center",
+                        targets: 8,
+                        render: function ( data, type, row, meta ) {
+                            return '<select class="js-action-visible">' +
+                                '<option ' + (parseInt(data) === 1 ? 'selected' : '') + ' value="1">Oui</option>' +
+                                '<option ' + (parseInt(data) === 0 ? 'selected' : '') + ' value="0">Non</option>' +
+                                '</select>';
+                        },
+                        createdCell: function(td, cellData, rowData, row, col) {
+                            td.style.backgroundColor = parseInt(cellData) ? 'rgba(0,255,0,0.1)' : 'rgba(255,0,0,0.1)';
+                        }
+                    },
+                    {
+                        className: "text-right",
+                        targets: 9,
+                        render: function ( data, type, row, meta ) {
+                            return '<a href="' + data + '" class="btn btn-primary" title="Voir">' +
+                                '<i class="glyphicon glyphicon-eye-open"></i>' +
+                                '</a>' +
+                                ' <a href="' + data + '" class="btn btn-danger js-action-delete" title="Supprimer" data-id="' + row[0] + '">' +
+                                '<i class="glyphicon glyphicon-trash"></i>' +
+                                '</a>';
+                        }
+                    }
+            ]),
+                language: {
+                "sProcessing":     "Traitement en cours...",
+                    "sSearch":         "Rechercher&nbsp;:",
+                    "sLengthMenu":     "Afficher _MENU_ &eacute;l&eacute;ments",
+                    "sInfo":           "Affichage de l'&eacute;l&eacute;ment _START_ &agrave; _END_ sur _TOTAL_ &eacute;l&eacute;ments",
+                    "sInfoEmpty":      "Affichage de l'&eacute;l&eacute;ment 0 &agrave; 0 sur 0 &eacute;l&eacute;ment",
+                    "sInfoFiltered":   "(filtr&eacute; de _MAX_ &eacute;l&eacute;ments au total)",
+                    "sInfoPostFix":    "",
+                    "sLoadingRecords": "Chargement en cours...",
+                    "sZeroRecords":    "Aucun &eacute;l&eacute;ment &agrave; afficher",
+                    "sEmptyTable":     "Aucune donn&eacute;e disponible dans le tableau",
+                    "oPaginate": {
+                    "sFirst":      "Premier",
+                        "sPrevious":   "Pr&eacute;c&eacute;dent",
+                        "sNext":       "Suivant",
+                        "sLast":       "Dernier"
+                },
+                "oAria": {
+                    "sSortAscending":  ": activer pour trier la colonne par ordre croissant",
+                        "sSortDescending": ": activer pour trier la colonne par ordre d&eacute;croissant"
+                }
+            }
+            });
+
+            function resetPopoverPosition() {
+                if (popoverPosition !== null) {
+                    popoverPosition.popover('destroy');
+                }
+            }
+
+            {* Masquer la colonne quand pas de catégorie *}
+            $module.find('#js-input-category').on('change', function() {
+                table.column(7).visible(
+                    $(this).val().length ? true : false
+                );
+
+                {* ordre par défaut sur la column position quand catégorie selectionnée et que l'ordre et sur la premiere colonne *}
+                if (table.order()[0][0] === 0) {
+                    table.order([7, 'asc']);
+                }
+            });
+
+            var $modal = $module.find('#modal-edit-product');
+            var $modalLoader = $modal.find('.js-loader');
+            var $modalContent = $modal.find('.js-content');
+            var $modalError = $modal.find('.js-error');
+            var $modalSuccess = $modal.find('.js-success');
+
+            var filters = $module.find('.js-refresh-table');
+            function refreshFilter()
+            {
+                filters.each(function(){
+                    if ('undefined' !== typeof this.dataset.default) {
+                        var val = $(this).val();
+                        {* gestion cas select multiple *}
+                        if (val === null) {
+                            val = '';
+                        }
+
+                        if (val !== this.dataset.default) {
+                            $(this).parents('.filter:eq(0)').css('backgroundColor', 'rgba(0, 102, 255, 0.1)');
+                        } else {
+                            $(this).parents('.filter:eq(0)').css('backgroundColor', '');
+                        }
+                    }
+                });
+            }
+
+
+            {* ajout timer pour éviter le spam ajax *}
+            var timer = null;
+            $module.find('.js-refresh-table').on('change keyup', function(event){
+                if (event.type === "keyup" ) {
+                    if (timer !== null) {
+                        clearTimeout(timer);
+                    }
+
+                    timer = setTimeout(function(){
+                        refreshFilter();
+                        table.ajax.reload();
+                    }, 350)
+                } else {
+                    refreshFilter();
+                    table.ajax.reload();
+                }
+            });
+
+            table.on('click', '.js-edit-price, .js-edit-quantity', function(event){
+               event.preventDefault();
+
+                $modalContent.hide();
+                $modalError.hide();
+                $modalSuccess.hide();
+                $modalLoader.show();
+
+               var id = $(this).parents('tr').find('td:first').text();
+
+               $.ajax({
+                   url: '{url current=true}/' + id,
+                   success: function(data) {
+                       $modalContent.html(data);
+
+                       $modalLoader.hide();
+                       $modalContent.show();
+                   },
+                   error: function() {
+                       $modalError.show();
+                   }
+               });
+
+                $modal.modal('show');
+            });
+
+            $modal.on('submit', 'form', function(event){
+                event.preventDefault();
+
+                $modalContent.hide();
+                $modalLoader.show();
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    method: 'post',
+                    data: $(this).serialize(),
+                    success: function() {
+                        table.ajax.reload(null, false);
+                        $modalSuccess.show();
+                        $modalLoader.hide();
+
+                        setTimeout(function () {
+                            $modal.modal('hide');
+                        }, 200);
+                    },
+                    error: function() {
+                        $modalError.show();
+                        $modalLoader.hide();
+                    }
+                });
+            });
+
+            $modal.on('click', '.page-close-button', function(event){
+                event.preventDefault();
+                $modal.modal('hide');
+            });
+
+            table.on('change', '.js-action-visible', function(){
+                $.ajax({
+                    url : "{url path='admin/products/toggle-online'}",
+                    data : {
+                        product_id : $(this).parents('tr').find('td:first').text(),
+                        action : 'visibilityToggle'
+                    }
+                });
+
+                table.ajax.reload(null, false);
+            });
+
+            table.on('click', '.js-action-position-up', function(event){
+                event.preventDefault();
+                $.ajax({
+                    url: "{url path="/admin/products/update-position"}",
+                    method: 'get',
+                    data: {
+                        mode: "up",
+                        category_id: $module.find('#js-input-category').val(),
+                        product_id: $(this).parents('tr').find('td:first').text()
+                    }
+                });
+
+                table.ajax.reload(null, false);
+            });
+
+            table.on('click', '.js-action-position-down', function(event){
+                event.preventDefault();
+                $.ajax({
+                    url: "{url path="/admin/products/update-position"}",
+                    method: 'get',
+                    data: {
+                        mode: "down",
+                        category_id: $module.find('#js-input-category').val(),
+                        product_id: $(this).parents('tr').find('td:first').text()
+                    }
+                });
+
+                table.ajax.reload(null, false);
+            });
+
+            table.on('click', '.js-action-position', function(event){
+                event.preventDefault();
+
+                resetPopoverPosition();
+
+                var currentPosition = $(this).text();
+
+                popoverPosition = $(this)
+                    .popover({
+                        html : true,
+                        placement: 'auto',
+                        title: function() {
+                            return 'Changer la position';
+                        },
+                        content: function() {
+                            return '<form class="form-inline js-form-position" data-product-id="' + $(this).parents('tr').find('td:first').text() + '">' +
+                                '  <div class="form-group">' +
+                                '    <div class="input-group">' +
+                                '      <input style="width: 70px;" type="number" class="form-control" min="0" value="' + currentPosition + '">' +
+                                '    </div>\n' +
+                                '  </div>\n' +
+                                '  <button type="submit" class="btn btn-primary">' +
+                                '<i class="glyphicon glyphicon-ok"></i>' +
+                                '</button>' +
+                                '<button type="button" class="btn btn-default btn-sm js-action-position-close"><i class="glyphicon glyphicon-remove"></i></button>' +
+                                '</form>';
+                        }
+                    }).popover('show');
+            });
+
+            table.on('submit', '.js-form-position', function(event){
+                event.preventDefault();
+                $.ajax({
+                    url: "{url path="/admin/products/update-position"}",
+                    method: 'get',
+                    data: {
+                        position: $(this).find('input').val(),
+                        category_id: $module.find('#js-input-category').val(),
+                        product_id: this.dataset.productId
+                    }
+                });
+
+                table.ajax.reload(null, false);
+            });
+
+            table.on('click', '.js-action-position-close', function(event){
+                event.preventDefault();
+                resetPopoverPosition();
+            });
+
+            {* auto refresh *}
+            var interval = null;
+            function autoRefresh()
+            {
+                var ms = parseInt($module.find('#js-input-auto-refresh-interval').val()) * 1000;
+
+                interval = setTimeout(function(){
+                    table.ajax.reload(null, false);
+                    autoRefresh();
+                }, ms)
+            }
+
+            $module.find('#js-input-auto-refresh').on('change', function(event){
+                if (parseInt($(this).val())) {
+                    autoRefresh();
+                    document.getElementById('js-input-auto-refresh-interval').parentNode.parentNode.parentNode.style.backgroundColor = 'rgba(0, 102, 255, 0.1)';
+                    this.parentNode.parentNode.style.backgroundColor = 'rgba(0, 102, 255, 0.1)';
+                } else {
+                    clearInterval(interval);
+                    interval = null;
+                    document.getElementById('js-input-auto-refresh-interval').parentNode.parentNode.parentNode.style.backgroundColor = '';
+                    this.parentNode.parentNode.style.backgroundColor = '';
+                }
+            });
+            {* end auto refresh *}
+
+            table.on('click', '.js-action-delete', function(e){
+                e.preventDefault();
+
+                // Set proper product ID in delete form
+                $modalDelete.find('#product_delete_id').val($(this).data('id'));
+
+                $modalDelete.modal('show');
+            });
+
+            $modalDelete.on('submit', 'form', function(e){
+                e.preventDefault();
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    method: 'post',
+                    data: $(this).serialize(),
+                    success: function() {
+                        table.ajax.reload(null, false);
+
+                        setTimeout(function () {
+                            $modalDelete.modal('hide');
+                        }, 200);
+                    },
+                    error: function() {
+
+                    }
+                });
+            });
+
+           /* $module.find('select.js-select2').select2({
+                language: "fr"
+            });*/
+
+           {* Modale information module *}
+           $('.js-module-easy-product-manager-info').on('click', function(){
+               $module.find('#modal-info').modal('show');
+               $(this).removeClass('js-animate-info-button');
+           });
+
+            window.addEventListener("message", function(event){
+                if (event.origin === "https://www.gilles-bourgeat.fr" && event.data === 'new') {
+                    $(document).ready(function(){
+                        $('.js-module-easy-product-manager-info').addClass('js-animate-info-button');
+                    });
+                }
+            }, false);
+
+        }(jQuery, jQuery('#module-easy-product-manager')))
+    </script>
+{/block}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<routes xmlns="http://symfony.com/schema/routing"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/routing http://symfony.com/schema/routing/routing-1.0.xsd">
+
+    <route id="admin_easy_product_manager_list_product" path="/admin/easy-product-manager/list/{productId}" methods="GET">
+        <default key="_controller">EasyProductManager:Back:product</default>
+    </route>
+
+    <route id="admin_easy_product_manager_list" path="/admin/easy-product-manager/list" methods="GET|POST">
+        <default key="_controller">EasyProductManager:Back:list</default>
+    </route>
+</routes>
