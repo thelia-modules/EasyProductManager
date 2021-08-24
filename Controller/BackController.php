@@ -6,7 +6,9 @@ use EasyProductManager\EasyProductManager;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Propel\Runtime\ActiveQuery\Join;
 use Propel\Runtime\ActiveQuery\ModelCriteria;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Thelia\Controller\Admin\ProductController;
 use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
@@ -29,17 +31,24 @@ use Thelia\Model\ProductSaleElementsQuery;
 use Thelia\TaxEngine\Calculator;
 use Thelia\Tools\MoneyFormat;
 use Thelia\Tools\URL;
+use Symfony\Component\Routing\Annotation\Route;
 
 /**
+ * @Route("/admin/easy-product-manager/list", name="easy-product-manager")
  * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
  */
 class BackController extends ProductController
 {
-    public function productAction(Request $request, $productId)
+    /**
+     * @Route("/{productId}", name="_product", methods="GET")
+     */
+    public function productAction(RequestStack $requestStack, $productId)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
         }
+
+        $request = $requestStack->getCurrentRequest();
 
         $product = ProductQuery::create()
             ->filterById($productId)
@@ -52,12 +61,16 @@ class BackController extends ProductController
         ]);
     }
 
-    public function listAction(Request $request)
+    /**
+     * @Route("", name="_list", methods={"GET","POST"})
+     */
+    public function listAction(RequestStack $requestStack, EventDispatcherInterface $eventDispatcher)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
         }
 
+        $request = $requestStack->getCurrentRequest();
         if ($request->isXmlHttpRequest()) {
             /** @var Lang $lang */
             $lang = $this->getLang($request);
@@ -183,7 +196,7 @@ class BackController extends ProductController
                             ->setSourceFilepath($sourceFilePath);
 
                         // Dispatch image processing event
-                        $this->getDispatcher()->dispatch(TheliaEvents::IMAGE_PROCESS, $event);
+                        $eventDispatcher->dispatch($event, TheliaEvents::IMAGE_PROCESS);
 
                         $imageUrl = $event->getFileUrl();
                     } catch (\Exception $e) {
