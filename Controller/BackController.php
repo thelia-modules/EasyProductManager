@@ -16,6 +16,7 @@ use Thelia\Core\HttpFoundation\JsonResponse;
 use Thelia\Core\HttpFoundation\Request;
 use Thelia\Core\Security\AccessManager;
 use Thelia\Core\Security\Resource\AdminResources;
+use Thelia\Core\Template\ParserContext;
 use Thelia\Core\Thelia;
 use Thelia\Model\CountryQuery;
 use Thelia\Model\CurrencyQuery;
@@ -42,7 +43,7 @@ class BackController extends ProductController
     /**
      * @Route("/{productId}", name="_product", methods="GET")
      */
-    public function productAction(RequestStack $requestStack, $productId)
+    public function productAction(RequestStack $requestStack, ParserContext $parserContext, $productId)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
@@ -55,7 +56,7 @@ class BackController extends ProductController
             ->findOne();
 
         return $this->render('EasyProductManager/product', [
-            'form' => $this->hydrateObjectForm($product),
+            'form' => $this->hydrateObjectForm($parserContext, $product),
             'product_id' => $productId,
             'edit_currency_id' => $request->getSession()->getAdminEditionCurrency()->getId()
         ]);
