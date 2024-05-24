@@ -16,7 +16,6 @@ use Thelia\Core\HttpFoundation\JsonResponse;
 use Thelia\Core\HttpFoundation\Request;
 use Thelia\Core\Security\AccessManager;
 use Thelia\Core\Security\Resource\AdminResources;
-use Thelia\Core\Template\ParserContext;
 use Thelia\Core\Thelia;
 use Thelia\Model\CountryQuery;
 use Thelia\Model\CurrencyQuery;
@@ -43,7 +42,7 @@ class BackController extends ProductController
     /**
      * @Route("/{productId}", name="_product", methods="GET")
      */
-    public function productAction(RequestStack $requestStack, ParserContext $parserContext, $productId)
+    public function productAction(RequestStack $requestStack, $productId)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
@@ -56,7 +55,7 @@ class BackController extends ProductController
             ->findOne();
 
         return $this->render('EasyProductManager/product', [
-            'form' => $this->hydrateObjectForm($parserContext, $product),
+            'form' => $this->hydrateObjectForm($product),
             'product_id' => $productId,
             'edit_currency_id' => $request->getSession()->getAdminEditionCurrency()->getId()
         ]);
@@ -243,6 +242,9 @@ class BackController extends ProductController
                 );
 
                 $json['data'][] = [
+                    [
+                        'product_ids' => $product->getId(),
+                    ],
                     $product->getId(),
                     $imageUrl,
                     $product->getRef(),
@@ -434,6 +436,13 @@ class BackController extends ProductController
 
         $definitions = [
             [
+                'name' => 'checkbox',
+                'targets' => ++$i,
+                'title' => '<input type="checkbox" id="select-all" />',
+                'orderable' => false,
+                'searchable' => false,
+            ],
+            [
                 'name' => 'id',
                 'targets' => ++$i,
                 'orm' => ProductTableMap::ID,
@@ -553,5 +562,81 @@ class BackController extends ProductController
     protected function getSearchValue(Request $request)
     {
         return (string) $request->get('search')['value'];
+    }
+
+    /**
+     * @Route("/delete-selected", name="_delete_selected", methods="POST")
+     * @throws \JsonException
+     */
+    public function deleteSelectedAction(Request $request)
+    {
+        if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::DELETE)) {
+            return $response;
+        }
+
+        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $productIds = $data['product_ids'] ?? [];
+
+        $deletedProducts = [];
+        $notDeletedProducts = [];
+
+        foreach ($productIds as $productId) {
+            $product = ProductQuery::create()->findPk($productId);
+
+            if ($product !== null) {
+                try {
+                    $product->delete();
+                    $deletedProducts[] = $productId;
+                } catch (\Exception $e) {
+                    $notDeletedProducts[] = $productId;
+                }
+            } else {
+                $notDeletedProducts[] = $productId;
+            }
+        }
+
+        return new JsonResponse([
+            'deleted_products' => $deletedProducts,
+            'not_deleted_products' => $notDeletedProducts,
+        ]);
+    }
+
+    /**
+     * @Route("/change-visibility-selected", name="_change_visibility_selected", methods="POST")
+     * @throws \JsonException
+     */
+    public function changeVisibilitySelectedAction(Request $request)
+    {
+        if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
+            return $response;
+        }
+
+        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $productIds = $data['product_ids'] ?? [];
+        $visibility = (int) ($data['visibility'] ?? 0);
+
+        $updatedProducts = [];
+        $notUpdatedProducts = [];
+
+        foreach ($productIds as $productId) {
+            $product = ProductQuery::create()->findPk($productId);
+
+            if ($product !== null) {
+                try {
+                    $product->setVisible($visibility);
+                    $product->save();
+                    $updatedProducts[] = $productId;
+                } catch (\Exception $e) {
+                    $notUpdatedProducts[] = $productId;
+                }
+            } else {
+                $notUpdatedProducts[] = $productId;
+            }
+        }
+
+        return new JsonResponse([
+            'updated_products' => $updatedProducts,
+            'not_updated_products' => $notUpdatedProducts,
+        ]);
     }
 }
