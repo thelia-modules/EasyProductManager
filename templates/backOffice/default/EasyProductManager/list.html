@@ -773,7 +773,7 @@
                 e.preventDefault();
 
                 // Set proper product ID in delete form
-                $modalDelete.find('#product_delete_id').val($(this).data('id'));
+                $modalDelete.find('#product_delete_id').val($(this).parents('tr').find('td:eq(1)').text());
 
                 $modalDelete.modal('show');
             });
