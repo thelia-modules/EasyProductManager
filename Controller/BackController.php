@@ -2,12 +2,8 @@
 
 namespace EasyProductManager\Controller;
 
-use EasyProductManager\EasyProductManager;
 use Propel\Runtime\ActiveQuery\Criteria;
-use Propel\Runtime\ActiveQuery\Join;
-use Propel\Runtime\ActiveQuery\ModelCriteria;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Thelia\Controller\Admin\ProductController;
 use Thelia\Core\Event\Image\ImageEvent;
@@ -16,7 +12,6 @@ use Thelia\Core\HttpFoundation\JsonResponse;
 use Thelia\Core\HttpFoundation\Request;
 use Thelia\Core\Security\AccessManager;
 use Thelia\Core\Security\Resource\AdminResources;
-use Thelia\Core\Thelia;
 use Thelia\Model\CountryQuery;
 use Thelia\Model\CurrencyQuery;
 use Thelia\Model\Lang;
@@ -24,13 +19,13 @@ use Thelia\Model\LangQuery;
 use Thelia\Model\Map\ProductI18nTableMap;
 use Thelia\Model\Map\ProductSaleElementsTableMap;
 use Thelia\Model\Map\ProductTableMap;
+use Thelia\Model\Map\ProductImageTableMap;
 use Thelia\Model\Product;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductSaleElementsQuery;
 use Thelia\TaxEngine\Calculator;
 use Thelia\Tools\MoneyFormat;
-use Thelia\Tools\URL;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -445,21 +440,22 @@ class BackController extends ProductController
             [
                 'name' => 'id',
                 'targets' => ++$i,
-                'orm' => ProductTableMap::ID,
+                'orm' => ProductTableMap::COL_ID,
                 'title' => 'Id',
                 'searchable' => false
             ],
             [
                 'name' => 'images',
                 'targets' => ++$i,
+                'orm' => ProductImageTableMap::COL_FILE,
                 'title' => 'Image',
-                'orderable' => false,
+                'orderable' => true,
                 'searchable' => false
             ],
             [
                 'name' => 'ref',
                 'targets' => ++$i,
-                'orm' => ProductTableMap::REF,
+                'orm' => ProductTableMap::COL_REF,
                 'title' => 'Référence',
                 'searchable' => true
             ],
@@ -501,7 +497,7 @@ class BackController extends ProductController
             [
                 'name' => 'visible',
                 'targets' => ++$i,
-                'orm' => ProductTableMap::VISIBLE,
+                'orm' => ProductTableMap::COL_VISIBLE,
                 'title' => 'En ligne',
                 'searchable' => false
             ],
@@ -538,10 +534,16 @@ class BackController extends ProductController
 
     protected function applyOrder(Request $request, ProductQuery $query)
     {
-        $query->orderBy(
-            $this->getOrderColumnName($request),
-            $this->getOrderDir($request)
-        );
+        if ($this->getOrderColumnName($request) === ProductImageTableMap::COL_FILE) {
+            $query->useProductImageQuery()
+                ->orderByFile($this->getOrderDir($request))
+                ->endUse();
+        } else {
+            $query->orderBy(
+                $this->getOrderColumnName($request),
+                $this->getOrderDir($request)
+            );
+        }
     }
 
     protected function applySearch(Request $request, ProductQuery $query)
