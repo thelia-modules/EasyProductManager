@@ -190,13 +190,10 @@ class BackController extends ProductController
                             $event->setSourceFilepath($sourceFilePath);
                             $eventDispatcher->dispatch($event, TheliaEvents::IMAGE_PROCESS);
                             $imageUrl = $event->getFileUrl();
-                        } else {
-                            $imageUrl = 'URL_TO_DEFAULT_IMAGE';
                         }
                     } catch (\Exception $e) {
                     }
                 }
-
 
                 $price = $product->getVirtualColumn('price');
                 $taxedPrice = $taxCalculator->load($product, $country)->getTaxedPrice($product->getVirtualColumn('price'));
