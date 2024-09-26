@@ -179,7 +179,6 @@ class BackController extends ProductController
                 $imageUrl = '';
                 if (null !== $image) {
                     try {
-                        // Put source image file path
                         $sourceFilePath = sprintf(
                             '%s/%s/%s',
                             $baseSourceFilePath,
@@ -187,17 +186,17 @@ class BackController extends ProductController
                             $image->getFile()
                         );
 
-                        $event
-                            ->setSourceFilepath($sourceFilePath);
-
-                        // Dispatch image processing event
-                        $eventDispatcher->dispatch($event, TheliaEvents::IMAGE_PROCESS);
-
-                        $imageUrl = $event->getFileUrl();
+                        if (file_exists($sourceFilePath)) {
+                            $event->setSourceFilepath($sourceFilePath);
+                            $eventDispatcher->dispatch($event, TheliaEvents::IMAGE_PROCESS);
+                            $imageUrl = $event->getFileUrl();
+                        } else {
+                            $imageUrl = 'URL_TO_DEFAULT_IMAGE';
+                        }
                     } catch (\Exception $e) {
-                        // on ignore l'erreur
                     }
                 }
+
 
                 $price = $product->getVirtualColumn('price');
                 $taxedPrice = $taxCalculator->load($product, $country)->getTaxedPrice($product->getVirtualColumn('price'));
@@ -535,9 +534,14 @@ class BackController extends ProductController
     protected function applyOrder(Request $request, ProductQuery $query)
     {
         if ($this->getOrderColumnName($request) === ProductImageTableMap::COL_FILE) {
-            $query->useProductImageQuery()
-                ->orderByFile($this->getOrderDir($request))
-                ->endUse();
+            $query->leftJoinProductImage('product_image')
+                ->withColumn('product_image.file', 'image_file')
+                ->withColumn('product_image.position', 'image_position');
+
+            $query->withColumn('IF(product_image.file IS NOT NULL AND product_image.file != "", 1, 0)', 'has_image');
+            $query->orderBy('has_image', Criteria::DESC);
+            $query->orderBy('image_position', Criteria::ASC);
+            $query->orderBy('image_file', $this->getOrderDir($request));
         } else {
             $query->orderBy(
                 $this->getOrderColumnName($request),
