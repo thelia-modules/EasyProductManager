@@ -6,7 +6,7 @@ Author: Gilles Bourgeat <gilles.bourgeat@gmail.com>
 
 ## Compatibility
 
-Thelia >= 2.3
+For versions of Thelia earlier than 2.5, you must use a module version lower than version 3. For versions of Thelia later than 2.5, you must use a module version 3.
 
 ## Installation
 
@@ -19,8 +19,14 @@ Thelia >= 2.3
 
 Add it in your main thelia composer.json file
 
+For Thelia < 2.5
 ```
 composer require thelia/easy-product-manager:~2.1.1
+```
+
+For Thelia >= 2.5
+```
+composer require thelia/easy-product-manager:~3.0.7
 ```
 
 ## Screenshot
