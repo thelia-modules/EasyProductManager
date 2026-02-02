@@ -13,7 +13,7 @@
         <language>en_US</language>
         <language>fr_FR</language>
     </languages>
-    <version>3.0.7</version>
+    <version>3.1.0</version>
     <authors>
         <author>
             <name>Gilles Bourgeat</name>
@@ -21,7 +21,7 @@
         </author>
     </authors>
     <type>classic</type>
-    <thelia>2.3.0</thelia>
+    <thelia>2.6.0</thelia>
     <stability>beta</stability>
     <mandatory>0</mandatory>
     <hidden>0</hidden>
