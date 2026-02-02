@@ -18,9 +18,9 @@ use Thelia\Model\CurrencyQuery;
 use Thelia\Model\Lang;
 use Thelia\Model\LangQuery;
 use Thelia\Model\Map\ProductI18nTableMap;
+use Thelia\Model\Map\ProductImageI18nTableMap;
 use Thelia\Model\Map\ProductSaleElementsTableMap;
 use Thelia\Model\Map\ProductTableMap;
-use Thelia\Model\Map\ProductImageTableMap;
 use Thelia\Model\Product;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductQuery;
@@ -184,7 +184,7 @@ class BackController extends ProductController
                             '%s/%s/%s',
                             $baseSourceFilePath,
                             'product',
-                            $image->getFile()
+                            $image->setLocale($lang->getLocale())->getFile()
                         );
 
                         if (file_exists($sourceFilePath)) {
@@ -444,7 +444,7 @@ class BackController extends ProductController
             [
                 'name' => 'images',
                 'targets' => ++$i,
-                'orm' => ProductImageTableMap::COL_FILE,
+                'orm' => ProductImageI18nTableMap::COL_FILE,
                 'title' => 'Image',
                 'orderable' => true,
                 'searchable' => false
@@ -531,7 +531,7 @@ class BackController extends ProductController
 
     protected function applyOrder(Request $request, ProductQuery $query)
     {
-        if ($this->getOrderColumnName($request) === ProductImageTableMap::COL_FILE) {
+        if ($this->getOrderColumnName($request) === ProductImageI18nTableMap::COL_FILE) {
             $query->leftJoinProductImage('product_image')
                 ->withColumn('product_image.file', 'image_file')
                 ->withColumn('product_image.position', 'image_position');
