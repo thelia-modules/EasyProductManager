@@ -21,7 +21,6 @@ use Thelia\Model\Map\ProductI18nTableMap;
 use Thelia\Model\Map\ProductImageI18nTableMap;
 use Thelia\Model\Map\ProductSaleElementsTableMap;
 use Thelia\Model\Map\ProductTableMap;
-use Thelia\Model\Map\ProductImageTableMap;
 use Thelia\Model\Product;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductQuery;
@@ -185,7 +184,7 @@ class BackController extends ProductController
                             '%s/%s/%s',
                             $baseSourceFilePath,
                             'product',
-                            $image->getFile()
+                            $image->setLocale($lang->getLocale())->getFile()
                         );
 
                         if (file_exists($sourceFilePath)) {
