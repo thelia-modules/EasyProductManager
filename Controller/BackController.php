@@ -14,6 +14,7 @@ use Thelia\Core\HttpFoundation\Request;
 use Thelia\Core\Security\AccessManager;
 use Thelia\Core\Security\Resource\AdminResources;
 use Thelia\Core\Template\ParserContext;
+use Thelia\Domain\Taxation\TaxEngine\Calculator;
 use Thelia\Model\CountryQuery;
 use Thelia\Model\CurrencyQuery;
 use Thelia\Model\Lang;
@@ -27,7 +28,7 @@ use Thelia\Model\Product;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductSaleElementsQuery;
-use Thelia\TaxEngine\Calculator;
+use Thelia\TaxEngine\Calculator as LegacyCalculator;
 use Thelia\Tools\MoneyFormat;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -179,7 +180,10 @@ class BackController extends ProductController
             $currency = $this->getCurrency($request);
 
             $moneyFormat = MoneyFormat::getInstance($request);
-            $taxCalculator = new Calculator();
+
+            $taxCalculator = class_exists(LegacyCalculator::class)
+                ? new LegacyCalculator()
+                : new Calculator();
 
             /** @var Product $product */
             foreach ($products as $product) {
