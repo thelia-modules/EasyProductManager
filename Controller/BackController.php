@@ -5,6 +5,7 @@ namespace EasyProductManager\Controller;
 use Propel\Runtime\ActiveQuery\Criteria;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 use Thelia\Controller\Admin\ProductController;
 use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
@@ -19,6 +20,7 @@ use Thelia\Model\Lang;
 use Thelia\Model\LangQuery;
 use Thelia\Model\Map\ProductI18nTableMap;
 use Thelia\Model\Map\ProductImageI18nTableMap;
+use Thelia\Model\Map\ProductImageTableMap;
 use Thelia\Model\Map\ProductSaleElementsTableMap;
 use Thelia\Model\Map\ProductTableMap;
 use Thelia\Model\Product;
@@ -35,10 +37,12 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class BackController extends ProductController
 {
+    public string $productImageColFile = "";
+
     /**
      * @Route("/{productId}", name="_product", methods="GET")
      */
-    public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext)
+    public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext): ?Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
@@ -77,7 +81,7 @@ class BackController extends ProductController
             $query->useProductI18nQuery()
                 ->filterByLocale($lang->getLocale())
                 ->endUse()
-                ->withColumn(ProductI18nTableMap::TITLE, 'product_i18n_TITLE');
+                ->withColumn(ProductI18nTableMap::COL_TITLE, 'product_i18n_TITLE');
 
             // Jointure product sale element
             $query->useProductSaleElementsQuery('pse_price')
@@ -96,26 +100,26 @@ class BackController extends ProductController
 
             $newnessSubQuery = ProductSaleElementsQuery::create();
             $newnessSubQuery->setPrimaryTableName(ProductSaleElementsTableMap::TABLE_NAME);
-            $newnessSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::PRODUCT_ID);
+            $newnessSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::COL_PRODUCT_ID);
             $newnessSubQuery->addAsColumn('newness', 'SUM(product_sale_elements.newness)');
             $newnessSubQuery->addGroupByColumn('product_id');
 
             $query
                 ->addSelectQuery($newnessSubQuery, 'newnessSubQuery', false)
                 ->withColumn('newnessSubQuery.newness', 'newness')
-                ->where('newnessSubQuery.product_id = ' . ProductTableMap::ID)
+                ->where('newnessSubQuery.product_id = ' . ProductTableMap::COL_ID)
             ;
 
             $quantitySubQuery = new ProductSaleElementsQuery();
             $quantitySubQuery->setPrimaryTableName(ProductSaleElementsTableMap::TABLE_NAME);
-            $quantitySubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::PRODUCT_ID);
+            $quantitySubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::COL_PRODUCT_ID);
             $quantitySubQuery->addAsColumn('quantity', 'SUM(product_sale_elements.quantity)');
             $quantitySubQuery->addGroupByColumn('product_id');
 
             $query
                 ->addSelectQuery($quantitySubQuery, 'quantitySubQuery', false)
                 ->withColumn('quantitySubQuery.quantity', 'quantity')
-                ->where('quantitySubQuery.product_id = ' . ProductTableMap::ID)
+                ->where('quantitySubQuery.product_id = ' . ProductTableMap::COL_ID)
             ;
 
             // Jointure product sale element
@@ -123,7 +127,15 @@ class BackController extends ProductController
                 ->endUse();
 
 
-            $query->groupBy(ProductTableMap::ID);
+            $query->groupBy(ProductTableMap::COL_ID);
+
+            if (defined(ProductImageI18nTableMap::class.'::COL_FILE')) {
+                $this->productImageColFile = ProductImageI18nTableMap::COL_FILE;
+            }
+
+            if (defined(ProductImageI18nTableMap::class.'::COL_FILE')) {
+                $this->productImageColFile = ProductImageTableMap::COL_FILE;
+            }
 
             $this->applyOrder($request, $query);
 
@@ -302,14 +314,14 @@ class BackController extends ProductController
         if (0 !== $promotion = (int) $request->get('filter')['promotion']) {
             $promoSubQuery = ProductSaleElementsQuery::create();
             $promoSubQuery->setPrimaryTableName(ProductSaleElementsTableMap::TABLE_NAME);
-            $promoSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::PRODUCT_ID);
+            $promoSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::COL_PRODUCT_ID);
             $promoSubQuery->addAsColumn('promo', 'SUM(product_sale_elements.promo)');
             $promoSubQuery->addGroupByColumn('product_id');
 
             $query
                 ->addSelectQuery($promoSubQuery, 'promoSubQuery', false)
                 ->withColumn('promoSubQuery.promo', 'is_promo')
-                ->where('promoSubQuery.product_id = ' . ProductTableMap::ID)
+                ->where('promoSubQuery.product_id = ' . ProductTableMap::COL_ID)
             ;
 
             if ($promotion === 1) {
@@ -444,7 +456,7 @@ class BackController extends ProductController
             [
                 'name' => 'images',
                 'targets' => ++$i,
-                'orm' => ProductImageI18nTableMap::COL_FILE,
+                'orm' => $this->productImageColFile,
                 'title' => 'Image',
                 'orderable' => true,
                 'searchable' => false
@@ -531,7 +543,7 @@ class BackController extends ProductController
 
     protected function applyOrder(Request $request, ProductQuery $query)
     {
-        if ($this->getOrderColumnName($request) === ProductImageI18nTableMap::COL_FILE) {
+        if ($this->getOrderColumnName($request) === $this->productImageColFile) {
             $query->leftJoinProductImage('product_image')
                 ->withColumn('product_image.file', 'image_file')
                 ->withColumn('product_image.position', 'image_position');
@@ -557,8 +569,8 @@ class BackController extends ProductController
             $query->useProductSaleElementsQuery('pse_search_ref')
                 ->endUse();
 
-            $query->where(ProductTableMap::REF . ' LIKE ?', '%' . $value . '%', \PDO::PARAM_STR);
-            $query->_or()->where(ProductI18nTableMap::TITLE . ' LIKE ?', '%' . $value . '%', \PDO::PARAM_STR);
+            $query->where(ProductTableMap::COL_REF . ' LIKE ?', '%' . $value . '%', \PDO::PARAM_STR);
+            $query->_or()->where(ProductI18nTableMap::COL_TITLE . ' LIKE ?', '%' . $value . '%', \PDO::PARAM_STR);
             $query->_or()->where(' pse_search_ref.ref LIKE ?', '%' . $value . '%', \PDO::PARAM_STR);
         }
     }
