@@ -160,9 +160,17 @@
                         </div>
                     </div>
 
+                    <div class="col-md-2 filter">
+                        <div class="form-group">
+                            <label for="js-input-sort">Trier par</label>
+                            <select id="js-input-sort" class="form-control js-refresh-table" data-default="">
+                                <option value=""> Id de produit décroissant </option>
+                                <option value="pse_updated_desc"> Date de mise à jour décroissante</option>
+                            </select>
+                        </div>
+                    </div>
 
-
-                    <div class="col-md-5 filter">
+                    <div class="col-md-4 filter">
                         <div class="form-group">
                             <label for="js-input-length">Caractéristiques</label>
                             <select id="js-input-feature" class="form-control js-refresh-table" data-default="" multiple="multiple">
@@ -177,7 +185,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-5 filter">
+                    <div class="col-md-4 filter">
                         <div class="form-group">
                             <label for="js-input-length">Attributs</label>
                             <select id="js-input-attribute" class="form-control js-refresh-table" data-default="" multiple="multiple">
@@ -391,6 +399,7 @@
                             min: $module.find('#js-input-quantity-min').val(),
                             max: $module.find('#js-input-quantity-max').val()
                         },
+                        sort: $module.find('#js-input-sort').val(),
                         search: $module.find('#js-input-search').val(),
                         attributes: $module.find('#js-input-attribute').val(),
                         features: $module.find('#js-input-feature').val()

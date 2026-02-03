@@ -127,6 +127,16 @@ class BackController extends ProductController
             $query->useProductSaleElementsQuery()
                 ->endUse();
 
+            $pseUpdatedAtSubQuery = ProductSaleElementsQuery::create();
+            $pseUpdatedAtSubQuery->setPrimaryTableName(ProductSaleElementsTableMap::TABLE_NAME);
+            $pseUpdatedAtSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::COL_PRODUCT_ID);
+            $pseUpdatedAtSubQuery->addAsColumn('last_pse_updated_at', 'MAX(product_sale_elements.updated_at)');
+            $pseUpdatedAtSubQuery->addGroupByColumn('product_id');
+
+            $query
+                ->addSelectQuery($pseUpdatedAtSubQuery, 'pseUpdatedAtSubQuery', false)
+                ->withColumn('pseUpdatedAtSubQuery.last_pse_updated_at', 'last_pse_updated_at')
+                ->where('pseUpdatedAtSubQuery.product_id = ' . ProductTableMap::COL_ID);
 
             $query->groupBy(ProductTableMap::COL_ID);
 
@@ -547,6 +557,15 @@ class BackController extends ProductController
 
     protected function applyOrder(Request $request, ProductQuery $query)
     {
+        $filter = $request->get('filter');
+        $sort = is_array($filter) ? ($filter['sort'] ?? '') : '';
+
+        if ($sort === 'pse_updated_desc') {
+            $query->orderBy('last_pse_updated_at', Criteria::DESC);
+            $query->orderBy(ProductTableMap::COL_ID, Criteria::DESC); // tie-breaker stable
+            return;
+        }
+
         if ($this->getOrderColumnName($request) === $this->productImageColFile) {
             $query->leftJoinProductImage('product_image')
                 ->withColumn('product_image.file', 'image_file')
