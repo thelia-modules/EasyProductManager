@@ -144,7 +144,7 @@ class BackController extends ProductController
                 $this->productImageColFile = ProductImageI18nTableMap::COL_FILE;
             }
 
-            if (defined(ProductImageI18nTableMap::class.'::COL_FILE')) {
+            if (defined(ProductImageTableMap::class.'::COL_FILE')) {
                 $this->productImageColFile = ProductImageTableMap::COL_FILE;
             }
 
