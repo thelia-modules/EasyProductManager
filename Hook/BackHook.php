@@ -10,7 +10,7 @@ use Thelia\Core\Hook\BaseHook;
  */
 class BackHook extends BaseHook
 {
-    public function onMainInTopMenuItems(HookRenderEvent $event)
+    public function onMainInTopMenuItems(HookRenderEvent $event): void
     {
         $event->add(
             $this->render('EasyProductManager/hook/main.in.top.menu.items.html', [])
