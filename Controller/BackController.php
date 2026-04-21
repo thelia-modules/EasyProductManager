@@ -33,16 +33,14 @@ use Thelia\Tools\MoneyFormat;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
- * @Route("/admin/easy-product-manager/list", name="easy-product-manager")
  * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
  */
+#[Route('/admin/easy-product-manager/list', name: 'easy-product-manager')]
 class BackController extends ProductController
 {
     public string $productImageColFile = "";
 
-    /**
-     * @Route("/{productId}", name="_product", methods="GET")
-     */
+    #[Route('/{productId}', name: '_product', methods: ['GET'])]
     public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext): ?Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
@@ -62,9 +60,7 @@ class BackController extends ProductController
         ]);
     }
 
-    /**
-     * @Route("", name="_list", methods={"GET","POST"})
-     */
+    #[Route('', name: '_list', methods: ['GET', 'POST'])]
     public function listAction(RequestStack $requestStack, EventDispatcherInterface $eventDispatcher)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
@@ -604,9 +600,9 @@ class BackController extends ProductController
     }
 
     /**
-     * @Route("/delete-selected", name="_delete_selected", methods="POST")
      * @throws \JsonException
      */
+    #[Route('/delete-selected', name: '_delete_selected', methods: ['POST'])]
     public function deleteSelectedAction(Request $request)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::DELETE)) {
@@ -641,9 +637,9 @@ class BackController extends ProductController
     }
 
     /**
-     * @Route("/change-visibility-selected", name="_change_visibility_selected", methods="POST")
      * @throws \JsonException
      */
+    #[Route('/change-visibility-selected', name: '_change_visibility_selected', methods: ['POST'])]
     public function changeVisibilitySelectedAction(Request $request)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
