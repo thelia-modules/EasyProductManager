@@ -190,55 +190,85 @@
 </div>
 
 <script>
-    (function($){
-        $('.use_exchange_rate_box').on('change', function() {
-            if ($(this).is(':checked')) {
-                var pse_id = $(this).data('pse-id');
-                $('.price_field').prop('readonly', true);
-                $.ajax({
-                    url: '/admin/product/load-converted-prices',
-                    data: { product_sale_element_id: pse_id, currency_id: {{ edit_currency_id }} },
-                    type: 'get',
-                    dataType: 'json',
-                    success: function(json) {
-                        $('input[data-pse-id="'+pse_id+'"][data-price-type="price-with-tax"]').val(json.price_with_tax);
-                        $('input[data-pse-id="'+pse_id+'"][data-price-type="price-without-tax"]').val(json.price_without_tax);
-                        $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-with-tax"]').val(json.sale_price_with_tax);
-                        $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-without-tax"]').val(json.sale_price_without_tax);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        alert("Failed to get converted prices. Please try again. (" + errorThrown + ")");
-                    }
-                });
-            } else {
-                $('.price_field').prop('readonly', false);
-            }
+    (function () {
+        'use strict';
+
+        var editCurrencyId = {{ edit_currency_id }};
+        var productId = {{ product_id }};
+
+        function setFieldsReadonly(readonly) {
+            document.querySelectorAll('.price_field').forEach(function (el) {
+                el.readOnly = readonly;
+            });
+        }
+
+        document.querySelectorAll('.use_exchange_rate_box').forEach(function (box) {
+            box.addEventListener('change', function () {
+                var pseId = this.dataset.pseId;
+                if (this.checked) {
+                    setFieldsReadonly(true);
+                    var params = new URLSearchParams({
+                        product_sale_element_id: pseId,
+                        currency_id: editCurrencyId
+                    });
+                    fetch('/admin/product/load-converted-prices?' + params.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (json) {
+                        [
+                            ['price-with-tax', json.price_with_tax],
+                            ['price-without-tax', json.price_without_tax],
+                            ['sale-price-with-tax', json.sale_price_with_tax],
+                            ['sale-price-without-tax', json.sale_price_without_tax]
+                        ].forEach(function (pair) {
+                            var el = document.querySelector(
+                                'input[data-pse-id="' + pseId + '"][data-price-type="' + pair[0] + '"]'
+                            );
+                            if (el) { el.value = pair[1]; }
+                        });
+                    })
+                    .catch(function (err) {
+                        alert('Failed to get converted prices. Please try again. (' + err + ')');
+                    });
+                } else {
+                    setFieldsReadonly(false);
+                }
+            });
         });
 
         function update_price(price, price_type, dest_field_id) {
             var operation = '';
-            if (price_type.indexOf('with-tax') !== -1) operation = 'from_tax';
-            else if (price_type.indexOf('without-tax') !== -1) operation = 'to_tax';
+            if (price_type.indexOf('with-tax') !== -1) { operation = 'from_tax'; }
+            else if (price_type.indexOf('without-tax') !== -1) { operation = 'to_tax'; }
 
-            $.ajax({
-                url: '/admin/product/calculate-price',
-                data: { price: price, action: operation, product_id: {{ product_id }} },
-                type: 'get',
-                dataType: 'json',
-                success: function(json) {
-                    $('#' + dest_field_id).val(json.result);
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    alert("Failed to get prices. Please try again. (" + errorThrown + ")");
-                }
+            var params = new URLSearchParams({
+                price: price,
+                action: operation,
+                product_id: productId
+            });
+            fetch('/admin/product/calculate-price?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                var el = document.getElementById(dest_field_id);
+                if (el) { el.value = json.result; }
+            })
+            .catch(function (err) {
+                alert('Failed to get prices. Please try again. (' + err + ')');
             });
         }
 
-        $('.automatic_price_field').on('keyup change', function() {
-            var price = $(this).val().replace(",", ".");
-            $(this).val(price);
-            update_price(price, $(this).data('price-type'), $(this).data('rel-price'));
+        document.querySelectorAll('.automatic_price_field').forEach(function (field) {
+            ['keyup', 'change'].forEach(function (evt) {
+                field.addEventListener(evt, function () {
+                    var price = this.value.replace(',', '.');
+                    this.value = price;
+                    update_price(price, this.dataset.priceType, this.dataset.relPrice);
+                });
+            });
         });
-    }(jQuery));
+    }());
 </script>
 {% endif %}

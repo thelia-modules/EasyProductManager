@@ -9,6 +9,13 @@
     {{ 'Sorry, you are not allowed to perform this action.'|trans }}
 {% else %}
 
+{#
+  NOTE: jQuery, DataTables and Select2 are loaded from CDN below because this page relies on
+  jQuery-dependent libraries (DataTables server-side, Select2 multi-select) that have no
+  straightforward vanilla-JS equivalent. If the back-office enforces a strict Content-Security-Policy
+  that blocks external scripts, these CDN URLs must be added to the script-src/style-src directives,
+  or the assets must be self-hosted (e.g. via an npm build step publishing to web/modules/EasyProductManager/).
+#}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap.min.css">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-css/1.4.6/select2-bootstrap.min.css" rel="stylesheet" />
@@ -802,53 +809,58 @@
         });
 
         // Add select-all functionality
-        $('#select-all').on('click', function() {
-            var rows = $('.js-list').DataTable().rows({ 'search': 'applied' }).nodes();
-            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        document.getElementById('select-all').addEventListener('click', function() {
+            var rows = table.rows({ 'search': 'applied' }).nodes().toArray();
+            rows.forEach(function(row) {
+                row.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                    cb.checked = document.getElementById('select-all').checked;
+                });
+            });
         });
 
         // Handle delete selected items
-        $('#delete-selected-items').on('click', function () {
+        document.getElementById('delete-selected-items').addEventListener('click', function () {
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).show();
         });
 
-        $('#confirm-delete-selected').on('click', function () {
-            var selectedIds = [];
-            $('.select_customer:checked').each(function () {
-                selectedIds.push($(this).data('id'));
+        document.getElementById('confirm-delete-selected').addEventListener('click', function () {
+            var selectedIds = Array.from(document.querySelectorAll('.select_customer:checked')).map(function(cb) {
+                return cb.dataset.id;
             });
 
             if (selectedIds.length > 0) {
-                $.ajax({
-                    url: "{{ path('easy-product-manager_delete_selected') }}",
+                fetch("{{ path('easy-product-manager_delete_selected') }}", {
                     method: 'POST',
-                    contentType: 'application/json',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    data: JSON.stringify({ product_ids: selectedIds }),
-                    success: function (response) {
-                        var message = '';
-
-                        if (response.deleted_products && response.deleted_products.length > 0) {
-                            message += 'Les produits suivants ont été supprimés avec succès : ' + response.deleted_products.join(', ') + '. ';
-                        }
-
-                        if (response.not_deleted_products && response.not_deleted_products.length > 0) {
-                            message += 'Les produits suivants n\'ont pas pu être supprimés : ' + response.not_deleted_products.join(', ') + '.';
-                        }
-
-                        if (message === '') {
-                            message = 'Aucun produit n\'a été supprimé.';
-                        }
-
-                        alert(message);
-
-                        $('.js-list').DataTable().ajax.reload();
-                        $('#select-all').prop('checked', false);
-                        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).hide();
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
-                    error: function (xhr, status, error) {
-                        alert('Une erreur est survenue : ' + error);
+                    body: JSON.stringify({ product_ids: selectedIds })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(response) {
+                    var message = '';
+
+                    if (response.deleted_products && response.deleted_products.length > 0) {
+                        message += 'Les produits suivants ont été supprimés avec succès : ' + response.deleted_products.join(', ') + '. ';
                     }
+
+                    if (response.not_deleted_products && response.not_deleted_products.length > 0) {
+                        message += 'Les produits suivants n\'ont pas pu être supprimés : ' + response.not_deleted_products.join(', ') + '.';
+                    }
+
+                    if (message === '') {
+                        message = 'Aucun produit n\'a été supprimé.';
+                    }
+
+                    alert(message);
+
+                    table.ajax.reload();
+                    document.getElementById('select-all').checked = false;
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).hide();
+                })
+                .catch(function(err) {
+                    alert('Une erreur est survenue : ' + err);
                 });
             } else {
                 alert('Aucun produit sélectionné.');
@@ -857,17 +869,17 @@
 
         var visibilityAction = null;
 
-        $('#activate-visibility-selected-items').on('click', function () {
+        document.getElementById('activate-visibility-selected-items').addEventListener('click', function () {
             visibilityAction = 'activate';
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
         });
 
-        $('#deactivate-visibility-selected-items').on('click', function () {
+        document.getElementById('deactivate-visibility-selected-items').addEventListener('click', function () {
             visibilityAction = 'deactivate';
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
         });
 
-        $('#confirm-visibility-selected').on('click', function () {
+        document.getElementById('confirm-visibility-selected').addEventListener('click', function () {
             if (visibilityAction === 'activate') {
                 changeVisibilitySelectedItems(1);
             } else if (visibilityAction === 'deactivate') {
@@ -877,26 +889,27 @@
         });
 
         function changeVisibilitySelectedItems(visibility) {
-            var selectedIds = [];
-            $('.select_customer:checked').each(function () {
-                selectedIds.push($(this).data('id'));
+            var selectedIds = Array.from(document.querySelectorAll('.select_customer:checked')).map(function(cb) {
+                return cb.dataset.id;
             });
 
             if (selectedIds.length > 0) {
-                $.ajax({
-                    url: "{{ path('easy-product-manager_change_visibility_selected') }}",
+                fetch("{{ path('easy-product-manager_change_visibility_selected') }}", {
                     method: 'POST',
-                    contentType: 'application/json',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    data: JSON.stringify({ product_ids: selectedIds, visibility: visibility }),
-                    success: function (response) {
-                        $('.js-list').DataTable().ajax.reload();
-                        $('#select-all').prop('checked', false);
-                        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).hide();
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
-                    error: function (xhr, status, error) {
-                        alert('Une erreur est survenue : ' + error);
-                    }
+                    body: JSON.stringify({ product_ids: selectedIds, visibility: visibility })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function() {
+                    table.ajax.reload();
+                    document.getElementById('select-all').checked = false;
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).hide();
+                })
+                .catch(function(err) {
+                    alert('Une erreur est survenue : ' + err);
                 });
             } else {
                 alert('Aucun produit sélectionné.');

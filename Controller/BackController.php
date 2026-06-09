@@ -472,35 +472,53 @@ class BackController extends ProductController
         return $result;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function getRequestFilter(Request $request): array
+    {
+        $filter = $request->request->all('filter');
+        if (empty($filter)) {
+            $filter = $request->query->all('filter');
+        }
+
+        return is_array($filter) ? $filter : [];
+    }
+
     protected function filterByCategory(Request $request, ProductQuery $query)
     {
-        if (0 !== $categoryId = (int) $request->get('filter')['category']) {
+        $filter = $this->getRequestFilter($request);
+        if (0 !== $categoryId = (int) ($filter['category'] ?? 0)) {
             $query->where('product_category.CATEGORY_ID = ?', $categoryId, \PDO::PARAM_INT);
         }
     }
 
     protected function filterByBrand(Request $request, ProductQuery $query)
     {
-        if (0 !== $brandId = (int) $request->get('filter')['brand']) {
+        $filter = $this->getRequestFilter($request);
+        if (0 !== $brandId = (int) ($filter['brand'] ?? 0)) {
             $query->filterByBrandId($brandId);
         }
     }
 
     protected function filterByVisible(Request $request, ProductQuery $query)
     {
-        if (0 !== $visible = (int) $request->get('filter')['visible']) {
+        $filter = $this->getRequestFilter($request);
+        if (0 !== $visible = (int) ($filter['visible'] ?? 0)) {
             $query->filterByVisible($visible === 1 ? 1 : 0);
         }
     }
 
     protected function getCountry(Request $request)
     {
-        return CountryQuery::create()->findOneById($request->get('filter')['country']);
+        $filter = $this->getRequestFilter($request);
+        return CountryQuery::create()->findOneById($filter['country'] ?? null);
     }
 
     protected function getLang(Request $request)
     {
-        return LangQuery::create()->findOneById($request->get('filter')['lang']);
+        $filter = $this->getRequestFilter($request);
+        return LangQuery::create()->findOneById($filter['lang'] ?? null);
     }
 
     protected function getCurrency(Request $request)
@@ -510,7 +528,8 @@ class BackController extends ProductController
 
     protected function filterByPromotion(Request $request, ProductQuery $query)
     {
-        if (0 !== $promotion = (int) $request->get('filter')['promotion']) {
+        $filter = $this->getRequestFilter($request);
+        if (0 !== $promotion = (int) ($filter['promotion'] ?? 0)) {
             $promoSubQuery = ProductSaleElementsQuery::create();
             $promoSubQuery->setPrimaryTableName(ProductSaleElementsTableMap::TABLE_NAME);
             $promoSubQuery->addAsColumn('product_id', ProductSaleElementsTableMap::COL_PRODUCT_ID);
@@ -533,7 +552,8 @@ class BackController extends ProductController
 
     protected function filterByNewness(Request $request, ProductQuery $query)
     {
-        if (0 !== $newness = (int) $request->get('filter')['newness']) {
+        $filter = $this->getRequestFilter($request);
+        if (0 !== $newness = (int) ($filter['newness'] ?? 0)) {
             if ($newness === 1) {
                 $query->having('newness >= ?', 1, \PDO::PARAM_INT);
             } else {
@@ -544,24 +564,28 @@ class BackController extends ProductController
 
     protected function filterByQuantity(Request $request, ProductQuery $query)
     {
-        $quantityMin = (int) $request->get('filter')['quantity']['min'];
-        $quantityMax = (int) $request->get('filter')['quantity']['max'];
+        $filter = $this->getRequestFilter($request);
+        $quantityFilter = isset($filter['quantity']) && is_array($filter['quantity']) ? $filter['quantity'] : [];
+        $quantityMinRaw = $quantityFilter['min'] ?? '';
+        $quantityMaxRaw = $quantityFilter['max'] ?? '';
 
-        if ('' !== $request->get('filter')['quantity']['min']) {
-            $query->having('quantity >= ?', $quantityMin, \PDO::PARAM_INT);
+        if ('' !== $quantityMinRaw) {
+            $query->having('quantity >= ?', (int) $quantityMinRaw, \PDO::PARAM_INT);
         }
 
-        if ('' !== $request->get('filter')['quantity']['max']) {
-            $query->having('quantity <= ?', $quantityMax, \PDO::PARAM_INT);
+        if ('' !== $quantityMaxRaw) {
+            $query->having('quantity <= ?', (int) $quantityMaxRaw, \PDO::PARAM_INT);
         }
     }
 
     protected function filterByFeature(Request $request, ProductQuery $query)
     {
-        if (is_array($request->get('filter')['features'])) {
+        $filter = $this->getRequestFilter($request);
+        $rawFeatures = $filter['features'] ?? null;
+        if (is_array($rawFeatures)) {
             $features = array_map(function ($featureId) {
                 return (int) $featureId;
-            }, $request->get('filter')['features']);
+            }, $rawFeatures);
         } else {
             $features = [];
         }
@@ -575,10 +599,12 @@ class BackController extends ProductController
 
     protected function filterByAttribute(Request $request, ProductQuery $query)
     {
-        if (is_array($request->get('filter')['attributes'])) {
+        $filter = $this->getRequestFilter($request);
+        $rawAttributes = $filter['attributes'] ?? null;
+        if (is_array($rawAttributes)) {
             $attributes = array_map(function ($attributeId) {
                 return (int) $attributeId;
-            }, $request->get('filter')['attributes']);
+            }, $rawAttributes);
         } else {
             $attributes = [];
         }
@@ -599,7 +625,7 @@ class BackController extends ProductController
      */
     protected function getLength(Request $request)
     {
-        return (int) $request->get('length');
+        return (int) ($request->request->get('length') ?? $request->query->get('length'));
     }
 
     /**
@@ -608,7 +634,7 @@ class BackController extends ProductController
      */
     protected function getOffset(Request $request)
     {
-        return (int) $request->get('start');
+        return (int) ($request->request->get('start') ?? $request->query->get('start'));
     }
 
     /**
@@ -617,7 +643,7 @@ class BackController extends ProductController
      */
     protected function getDraw(Request $request)
     {
-        return (int) $request->get('draw');
+        return (int) ($request->request->get('draw') ?? $request->query->get('draw'));
     }
 
     /**
@@ -626,7 +652,8 @@ class BackController extends ProductController
      */
     protected function getOrderDir(Request $request)
     {
-        return (string) $request->get('order')[0]['dir'] === 'asc' ? Criteria::ASC : Criteria::DESC;
+        $order = $request->request->all('order') ?: $request->query->all('order');
+        return (string) ($order[0]['dir'] ?? 'desc') === 'asc' ? Criteria::ASC : Criteria::DESC;
     }
 
     /**
@@ -733,8 +760,9 @@ class BackController extends ProductController
      */
     protected function getOrderColumnName(Request $request)
     {
+        $order = $request->request->all('order') ?: $request->query->all('order');
         $columnDefinition = $this->defineColumnsDefinition(true)[
-        (int) $request->get('order')[0]['column']
+        (int) ($order[0]['column'] ?? 1)
         ];
 
         return $columnDefinition['orm'];
@@ -742,8 +770,8 @@ class BackController extends ProductController
 
     protected function applyOrder(Request $request, ProductQuery $query)
     {
-        $filter = $request->get('filter');
-        $sort = is_array($filter) ? ($filter['sort'] ?? '') : '';
+        $filter = $this->getRequestFilter($request);
+        $sort = $filter['sort'] ?? '';
 
         if ($sort === 'pse_updated_desc') {
             $query->orderBy('last_pse_updated_at', Criteria::DESC);
@@ -785,7 +813,8 @@ class BackController extends ProductController
 
     protected function getSearchValue(Request $request)
     {
-        return (string) $request->get('search')['value'];
+        $search = $request->request->all('search') ?: $request->query->all('search');
+        return (string) ($search['value'] ?? '');
     }
 
     /**
