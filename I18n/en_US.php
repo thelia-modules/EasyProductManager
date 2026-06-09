@@ -7,4 +7,7 @@ return array(
     'This can\'t be canceled.' => 'This can\'t be canceled.',
     'This product has combinations. Please edit prices from the product page.' => 'This product has combinations. Please edit prices from the product page.',
     'Edit product' => 'Edit product',
+    'Easy Product Manager' => 'Easy Product Manager',
+    'This module adds a dedicated product management screen accessible from the top menu.' => 'This module adds a dedicated product management screen accessible from the top menu.',
+    'Manage products' => 'Manage products',
 );

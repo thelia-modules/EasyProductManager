@@ -16,6 +16,9 @@ class BackHook extends BaseHook
             'main.in-top-menu-items' => [
                 ['type' => 'back', 'method' => 'onMainInTopMenuItems'],
             ],
+            'module.configuration' => [
+                ['type' => 'back', 'method' => 'onModuleConfiguration'],
+            ],
         ];
     }
 
@@ -23,6 +26,13 @@ class BackHook extends BaseHook
     {
         $event->add(
             $this->render('EasyProductManager/hook/main.in.top.menu.items.html.twig', [])
+        );
+    }
+
+    public function onModuleConfiguration(HookRenderEvent $event): void
+    {
+        $event->add(
+            $this->render('EasyProductManager/module-configuration.html.twig', [])
         );
     }
 }

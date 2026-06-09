@@ -7,4 +7,7 @@ return array(
     'This can\'t be canceled.' => 'Cette action est irréversible.',
     'This product has combinations. Please edit prices from the product page.' => 'Ce produit possède des déclinaisons. Veuillez modifier les prix depuis la page du produit.',
     'Edit product' => 'Modifier le produit',
+    'Easy Product Manager' => 'Easy Product Manager',
+    'This module adds a dedicated product management screen accessible from the top menu.' => 'Ce module ajoute un écran dédié de gestion des produits accessible depuis le menu supérieur.',
+    'Manage products' => 'Gérer les produits',
 );
