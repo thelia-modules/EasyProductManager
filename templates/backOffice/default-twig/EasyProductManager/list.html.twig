@@ -1,0 +1,908 @@
+{% extends '@BackOfficeDefaultTwig/base.html.twig' %}
+
+{% block title %}{{ 'Gestion des produits avec EasyProductManager'|trans({}, 'easyproductmanager') }}{% endblock %}
+
+{% block body_testid %}easy-product-manager-list{% endblock %}
+
+{% block content %}
+{% if not is_granted('VIEW', 'admin.product') %}
+    {{ 'Sorry, you are not allowed to perform this action.'|trans }}
+{% else %}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap.min.css">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-css/1.4.6/select2-bootstrap.min.css" rel="stylesheet" />
+<style>
+    .js-list {
+        width: 100% !important;
+    }
+    .js-animate-info-button {
+        animation: AnimateInfoButton 2s infinite;
+    }
+    @keyframes AnimateInfoButton{
+        0%{opacity: 1;}
+        50%{opacity: 0;}
+        100%{opacity: 1;}
+    }
+</style>
+
+<div id="module-easy-product-manager">
+
+    <div id="wrapper" class="container-fluid">
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="card-title h4 mb-0">{{ 'Gestion des produits avec EasyProductManager'|trans({}, 'easyproductmanager') }}</h1>
+                    </div>
+                    <div class="card-body">
+
+                <div class="row">
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-search" class="form-label">Rechercher</label>
+                            <input type="text" class="form-control js-refresh-table" data-default="" id="js-input-search" placeholder="Votre recherche">
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="mb-3">
+                            <label for="js-input-category" class="form-label">
+                                Filtrer par catégorie :
+                            </label>
+
+                            <select id="js-input-category" class="form-control js-refresh-table" data-default="">
+                                <option value="">Aucune catégorie filtré</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}">{% if cat.level > 0 %}{% for i in 1..cat.level %}&nbsp;&nbsp;&nbsp;{% endfor %}{% endif %}{{ cat.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="mb-3">
+                            <label for="js-input-brand" class="form-label">
+                                Filtrer par marque :
+                            </label>
+
+                            <select id="js-input-brand" class="form-control js-refresh-table" data-default="">
+                                <option value="">Aucune marque filtré</option>
+                                {% for brand in brands %}
+                                <option value="{{ brand.id }}">{{ brand.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-auto-refresh" class="form-label">AutoRefresh</label>
+                            <select id="js-input-auto-refresh" class="form-control">
+                                <option value="0">Désactivé</option>
+                                <option value="1">Activé</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-auto-refresh-interval" class="form-label">Intervalle</label>
+                            <div class="input-group">
+                                <input id="js-input-auto-refresh-interval" class="form-control" value="30" min="10" type="number"/>
+                                <span class="input-group-text">seconde</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-promotion" class="form-label">En promotion</label>
+                            <select id="js-input-promotion" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">Oui / Non</option>
+                                <option value="1">Oui</option>
+                                <option value="2">Non</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-newness" class="form-label">Nouveauté</label>
+                            <select id="js-input-newness" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">Oui / Non</option>
+                                <option value="1">Oui</option>
+                                <option value="2">Non</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-1 filter">
+                        <div class="mb-3">
+                            <label for="js-input-quantity-min" class="form-label">Qt min</label>
+                            <input type="number" step="1" class="form-control js-refresh-table" data-default="" id="js-input-quantity-min" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="col-md-1 filter">
+                        <div class="mb-3">
+                            <label for="js-input-quantity-max" class="form-label">Qt max</label>
+                            <input type="number" step="1" class="form-control js-refresh-table" data-default="" id="js-input-quantity-max" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-visible" class="form-label">En ligne / Hors ligne</label>
+                            <select id="js-input-visible" class="form-control js-refresh-table" data-default="0">
+                                <option value="0">En ligne / Hors ligne</option>
+                                <option value="1">En ligne</option>
+                                <option value="2">Hors ligne</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-lang" class="form-label">Language</label>
+                            <select id="js-input-lang" class="form-control js-refresh-table">
+                                {% for lang in langs %}
+                                <option value="{{ lang.id }}" {{ lang.is_default ? 'selected' : '' }}>{{ lang.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-country" class="form-label">Pays de livraison</label>
+                            <select id="js-input-country" class="form-control js-refresh-table">
+                                {% for country in countries %}
+                                <option value="{{ country.id }}" {{ country.is_default ? 'selected' : '' }}>{{ country.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-sort" class="form-label">Trier par</label>
+                            <select id="js-input-sort" class="form-control js-refresh-table" data-default="">
+                                <option value=""> Id de produit décroissant </option>
+                                <option value="pse_updated_desc"> Date de mise à jour décroissante</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 filter">
+                        <div class="mb-3">
+                            <label for="js-input-feature" class="form-label">Caractéristiques</label>
+                            <select id="js-input-feature" class="form-control js-refresh-table" data-default="" multiple="multiple">
+                                {% for feature in features %}
+                                <optgroup label="{{ feature.title }}">
+                                    {% for av in feature.availabilities %}
+                                    <option value="{{ av.id }}">{{ feature.title }} - {{ av.title }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 filter">
+                        <div class="mb-3">
+                            <label for="js-input-attribute" class="form-label">Attributs</label>
+                            <select id="js-input-attribute" class="form-control js-refresh-table" data-default="" multiple="multiple">
+                                {% for attribute in attributes %}
+                                <optgroup label="{{ attribute.title }}">
+                                    {% for av in attribute.availabilities %}
+                                    <option value="{{ av.id }}">{{ attribute.title }} - {{ av.title }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 filter">
+                        <div class="mb-3">
+                            <label for="js-input-length" class="form-label">Nombre d'éléments</label>
+                            <select id="js-input-length" class="form-control js-refresh-table">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="mb-3">
+                            <button id="delete-selected-items" class="btn btn-block btn-danger w-100">Supprimer les éléments sélectionnés</button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 filter">
+                        <div class="mb-3">
+                            <button id="activate-visibility-selected-items" class="btn btn-block btn-success w-100">Activer les éléments sélectionnés</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 filter">
+                        <div class="mb-3">
+                            <button id="deactivate-visibility-selected-items" class="btn btn-block btn-warning w-100">Désactiver les éléments sélectionnés</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12 filter">
+                        <table class="js-list table table-striped table-bordered">
+                            <thead>
+                            <tr>
+                                {% for definition in columnsDefinition %}
+                                <td>{{ definition.title|raw }}</td>
+                                {% endfor %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="modal-edit-product" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editer le produit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body js-loader">
+                    <div class="text-center">
+                        Veuillez patienter ...
+                    </div>
+                </div>
+                <div class="modal-body js-content">
+
+                </div>
+                <div class="modal-body js-error">
+                    <div class="alert alert-danger">
+                        Une erreur s'est produite
+                    </div>
+                </div>
+                <div class="modal-body js-success">
+                    <div class="alert alert-success">
+                        Informations sauvegardées avec succès
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-delete-selected" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Supprimer les produits sélectionnés</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Êtes-vous sûr de vouloir supprimer les produits sélectionnés ?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-selected">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirm Visibility Change -->
+    <div class="modal fade" id="modal-visibility-selected" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Changer la visibilité des produits sélectionnés</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Êtes-vous sûr de vouloir changer la visibilité des produits sélectionnés ?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="confirm-visibility-selected">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete single product dialog -->
+    <div class="modal fade" id="product_delete_dialog_modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="product_delete_dialog" method="post" action="/admin/products/delete?_token={{ assignToken() }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ 'Delete product'|trans({}, 'easyproductmanager') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {{ 'Do you really want to delete this product and all it\'s components (images, documents)?'|trans({}, 'easyproductmanager') }}<br>
+                        {{ 'This can\'t be canceled.'|trans({}, 'easyproductmanager') }}
+                        <input type="hidden" name="product_id" id="product_delete_id" value="" />
+                        <input type="hidden" name="category_id" value="1" />
+                        <input type="hidden" name="page" value="1" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Supprimer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+{{ parent() }}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap.min.js"></script>
+
+<script>
+    "use strict";
+    (function($, $module){
+        $( "#js-input-feature" ).select2( {
+            placeholder: 'Filter par caractéristique'
+        } );
+
+        $( "#js-input-attribute" ).select2( {
+            placeholder: 'Filtrer par attribut'
+        } );
+
+        $( "#js-input-category" ).select2();
+
+        $( "#js-input-brand" ).select2();
+
+        var currencySymbol = '{{ currencySymbol }}';
+
+        var popoverPosition = null,
+            $modalDelete = $module.find('#product_delete_dialog');
+
+        var listUrl = "{{ path('easy-product-manager_list') }}";
+
+        var table = $module.find('.js-list').DataTable( {
+            processing: true,
+            serverSide: true,
+            searching: false,
+            lengthChange: false,
+            order: [[ 1, "desc" ]],
+            drawCallback:function (oSettings) {
+            },
+            ajax: {
+                url: listUrl,
+                method: 'POST',
+                data: function (data) {
+                    resetPopoverPosition();
+
+                    data.filter = {
+                        country: $module.find('#js-input-country').val(),
+                        lang: $module.find('#js-input-lang').val(),
+                        category: $module.find('#js-input-category').val(),
+                        brand: $module.find('#js-input-brand').val(),
+                        visible: $module.find('#js-input-visible').val(),
+                        newness: $module.find('#js-input-newness').val(),
+                        promotion: $module.find('#js-input-promotion').val(),
+                        quantity: {
+                            min: $module.find('#js-input-quantity-min').val(),
+                            max: $module.find('#js-input-quantity-max').val()
+                        },
+                        sort: $module.find('#js-input-sort').val(),
+                        search: $module.find('#js-input-search').val(),
+                        attributes: $module.find('#js-input-attribute').val(),
+                        features: $module.find('#js-input-feature').val()
+                    };
+
+                    data.search = {
+                        "value": $module.find('#js-input-search').val(),
+                        regex: false
+                    };
+
+                    data.length = $module.find('#js-input-length').val();
+                }
+            },
+            displayLength: 25,
+            columnDefs: [
+                {
+                    targets: 0,
+                    orderable: false,
+                    className: "text-center",
+                    render: function (data, type, row, meta) {
+                        return '<input type="checkbox" class="select_customer" data-id="' + row[0]["product_ids"] + '">';
+                    },
+                },
+                {
+                    targets: [1, 2],
+                    responsivePriority: 4
+                },
+                {
+                    className: "text-center",
+                    targets: 2,
+                    render: function (data, type, row, meta) {
+                        var href = row[10] + '&current_tab=images';
+
+                        if (data !== '') {
+                            return '<a href="' + href + '"><img src="' + data + '" style="width: 50px; height: 50px;" /></a>';
+                        }
+
+                        return '<a href="' + href + '" style="line-height:50px;text-align:center;width: 50px; height: 50px;">Aucune</a>';
+                    }
+                },
+                {
+                    targets: [1, 3, 4],
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="' + row[10] + '">' + data + '</a>'
+                    }
+                },
+                {
+                    className: "text-center",
+                    targets: 5,
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="#" class="js-edit-price">' + data[0] + ' HT</a>'
+                            + '<br/>'
+                            + '<a href="#" class="js-edit-price">' + data[1] + ' TTC</a>';
+                    },
+                    responsivePriority: 3
+                },
+                {
+                    className: "text-center",
+                    targets: 6,
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="#" class="js-edit-price">' + data[0] + ' HT</a>'
+                            + '<br/>'
+                            + '<a href="#" class="js-edit-price">' + data[1] + ' TTC</a>';
+                    },
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        if (parseInt(cellData[2])) {
+                            td.style.backgroundColor = 'rgba(255, 128, 0,0.1)';
+                        }
+                    }
+                },
+                {
+                    className: "text-center",
+                    targets: 7,
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="#" class="js-edit-quantity">' + data + '</a>';
+                    },
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        td.style.backgroundColor = parseInt(cellData) ? 'rgba(0,255,0,0.1)' : 'rgba(255,0,0,0.1)';
+                    }
+                },
+                {
+                    className: "text-center",
+                    targets: 8,
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="#" class="js-action-position-up"><i class="bi bi-arrow-up"></i></a>' +
+                            '&nbsp;&nbsp;<a href="#" class="js-action-position">' + data + '</a>&nbsp;&nbsp;' +
+                            '<a href="#" class="js-action-position-down"><i class="bi bi-arrow-down"></i></a>';
+                    },
+                    visible: false
+                },
+                {
+                    className: "text-center",
+                    targets: 9,
+                    render: function ( data, type, row, meta ) {
+                        return '<select class="js-action-visible">' +
+                            '<option ' + (parseInt(data) === 1 ? 'selected' : '') + ' value="1">Oui</option>' +
+                            '<option ' + (parseInt(data) === 0 ? 'selected' : '') + ' value="0">Non</option>' +
+                            '</select>';
+                    },
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        td.style.backgroundColor = parseInt(cellData) ? 'rgba(0,255,0,0.1)' : 'rgba(255,0,0,0.1)';
+                    }
+                },
+                {
+                    className: "text-end",
+                    targets: 10,
+                    orderable: false,
+                    render: function ( data, type, row, meta ) {
+                        return '<a href="' + data + '" class="btn btn-primary" title="Voir">' +
+                            '<i class="bi bi-eye"></i>' +
+                            '</a>' +
+                            ' <a href="' + data + '" class="btn btn-danger js-action-delete" title="Supprimer" data-id="' + row[0] + '">' +
+                            '<i class="bi bi-trash"></i>' +
+                            '</a>';
+                    }
+                }
+            ],
+            language: {
+                "sProcessing":     "Traitement en cours...",
+                "sSearch":         "Rechercher&nbsp;:",
+                "sLengthMenu":     "Afficher _MENU_ &eacute;l&eacute;ments",
+                "sInfo":           "Affichage de l'&eacute;l&eacute;ment _START_ &agrave; _END_ sur _TOTAL_ &eacute;l&eacute;ments",
+                "sInfoEmpty":      "Affichage de l'&eacute;l&eacute;ment 0 &agrave; 0 sur 0 &eacute;l&eacute;ment",
+                "sInfoFiltered":   "(filtr&eacute; de _MAX_ &eacute;l&eacute;ments au total)",
+                "sInfoPostFix":    "",
+                "sLoadingRecords": "Chargement en cours...",
+                "sZeroRecords":    "Aucun &eacute;l&eacute;ment &agrave; afficher",
+                "sEmptyTable":     "Aucune donn&eacute;e disponible dans le tableau",
+                "oPaginate": {
+                    "sFirst":      "Premier",
+                    "sPrevious":   "Pr&eacute;c&eacute;dent",
+                    "sNext":       "Suivant",
+                    "sLast":       "Dernier"
+                },
+                "oAria": {
+                    "sSortAscending":  ": activer pour trier la colonne par ordre croissant",
+                    "sSortDescending": ": activer pour trier la colonne par ordre d&eacute;croissant"
+                }
+            }
+        });
+
+        function resetPopoverPosition() {
+            if (popoverPosition !== null) {
+                popoverPosition.popover('dispose');
+            }
+        }
+
+        // Masquer la colonne quand pas de catégorie
+        $module.find('#js-input-category').on('change', function() {
+            table.column(8).visible(
+                $(this).val().length ? true : false
+            );
+
+            // ordre par défaut sur la column position quand catégorie selectionnée
+            if (table.order()[0][0] === 1) {
+                table.order([8, 'asc']);
+            }
+        });
+
+        var $modal = $module.find('#modal-edit-product');
+        var $modalLoader = $modal.find('.js-loader');
+        var $modalContent = $modal.find('.js-content');
+        var $modalError = $modal.find('.js-error');
+        var $modalSuccess = $modal.find('.js-success');
+        var bsEditModal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+        var bsDeleteModal = bootstrap.Modal.getOrCreateInstance($modalDelete.closest('.modal')[0]);
+
+        var filters = $module.find('.js-refresh-table');
+        function refreshFilter()
+        {
+            filters.each(function(){
+                if ('undefined' !== typeof this.dataset.default) {
+                    var val = $(this).val();
+                    if (val === null) {
+                        val = '';
+                    }
+
+                    if (val !== this.dataset.default) {
+                        $(this).parents('.filter:eq(0)').css('backgroundColor', 'rgba(0, 102, 255, 0.1)');
+                    } else {
+                        $(this).parents('.filter:eq(0)').css('backgroundColor', '');
+                    }
+                }
+            });
+        }
+
+        var timer = null;
+        $module.find('.js-refresh-table').on('change keyup', function(event){
+            if (event.type === "keyup" ) {
+                if (timer !== null) {
+                    clearTimeout(timer);
+                }
+
+                timer = setTimeout(function(){
+                    refreshFilter();
+                    table.ajax.reload();
+                }, 350)
+            } else {
+                refreshFilter();
+                table.ajax.reload();
+            }
+        });
+
+        table.on('click', '.js-edit-price, .js-edit-quantity', function(event){
+            event.preventDefault();
+
+            $modalContent.hide();
+            $modalError.hide();
+            $modalSuccess.hide();
+            $modalLoader.show();
+
+            var id = $(this).parents('tr').find('td:eq(1)').text();
+
+            $.ajax({
+                url: listUrl + '/' + id,
+                success: function(data) {
+                    $modalContent.html(data);
+
+                    $modalLoader.hide();
+                    $modalContent.show();
+                },
+                error: function() {
+                    $modalError.show();
+                }
+            });
+
+            bsEditModal.show();
+        });
+
+        $modal.on('submit', 'form', function(event){
+            event.preventDefault();
+
+            $modalContent.hide();
+            $modalLoader.show();
+
+            $.ajax({
+                url: $(this).attr('action'),
+                method: 'post',
+                data: $(this).serialize(),
+                success: function() {
+                    table.ajax.reload(null, false);
+                    $modalSuccess.show();
+                    $modalLoader.hide();
+
+                    setTimeout(function () {
+                        bsEditModal.hide();
+                    }, 200);
+                },
+                error: function() {
+                    $modalError.show();
+                    $modalLoader.hide();
+                }
+            });
+        });
+
+        $modal.on('click', '.page-close-button', function(event){
+            event.preventDefault();
+            bsEditModal.hide();
+        });
+
+        table.on('change', '.js-action-visible', function(){
+            $.ajax({
+                url : "/admin/products/toggle-online",
+                data : {
+                    product_id : $(this).parents('tr').find('td:eq(1)').text(),
+                    action : 'visibilityToggle'
+                }
+            });
+
+            table.ajax.reload(null, false);
+        });
+
+        table.on('click', '.js-action-position-up', function(event){
+            event.preventDefault();
+            $.ajax({
+                url: "/admin/products/update-position",
+                method: 'get',
+                data: {
+                    mode: "up",
+                    category_id: $module.find('#js-input-category').val(),
+                    product_id: $(this).parents('tr').find('td:eq(1)').text()
+                }
+            });
+
+            table.ajax.reload(null, false);
+        });
+
+        table.on('click', '.js-action-position-down', function(event){
+            event.preventDefault();
+            $.ajax({
+                url: "/admin/products/update-position",
+                method: 'get',
+                data: {
+                    mode: "down",
+                    category_id: $module.find('#js-input-category').val(),
+                    product_id: $(this).parents('tr').find('td:eq(1)').text()
+                }
+            });
+
+            table.ajax.reload(null, false);
+        });
+
+        table.on('click', '.js-action-position', function(event){
+            event.preventDefault();
+
+            resetPopoverPosition();
+
+            var currentPosition = $(this).text();
+
+            popoverPosition = new bootstrap.Popover(this, {
+                html : true,
+                placement: 'auto',
+                title: 'Changer la position',
+                content: '<form class="form-inline js-form-position" data-product-id="' + $(this).parents('tr').find('td:eq(1)').text() + '">' +
+                    '  <div class="mb-3">' +
+                    '    <div class="input-group">' +
+                    '      <input style="width: 70px;" type="number" class="form-control" min="0" value="' + currentPosition + '">' +
+                    '    </div>\n' +
+                    '  </div>\n' +
+                    '  <button type="submit" class="btn btn-primary">' +
+                    '<i class="bi bi-check-lg"></i>' +
+                    '</button>' +
+                    '<button type="button" class="btn btn-secondary btn-sm js-action-position-close"><i class="bi bi-x-lg"></i></button>' +
+                    '</form>'
+            });
+            popoverPosition.show();
+        });
+
+        $(document).on('submit', '.js-form-position', function(event){
+            event.preventDefault();
+            $.ajax({
+                url: "/admin/products/update-position",
+                method: 'get',
+                data: {
+                    position: $(this).find('input').val(),
+                    category_id: $module.find('#js-input-category').val(),
+                    product_id: this.dataset.productId
+                }
+            });
+
+            table.ajax.reload(null, false);
+        });
+
+        $(document).on('click', '.js-action-position-close', function(event){
+            event.preventDefault();
+            resetPopoverPosition();
+        });
+
+        // auto refresh
+        var interval = null;
+        function autoRefresh()
+        {
+            var ms = parseInt($module.find('#js-input-auto-refresh-interval').val()) * 1000;
+
+            interval = setTimeout(function(){
+                table.ajax.reload(null, false);
+                autoRefresh();
+            }, ms)
+        }
+
+        $module.find('#js-input-auto-refresh').on('change', function(event){
+            if (parseInt($(this).val())) {
+                autoRefresh();
+                document.getElementById('js-input-auto-refresh-interval').parentNode.parentNode.parentNode.style.backgroundColor = 'rgba(0, 102, 255, 0.1)';
+                this.parentNode.parentNode.style.backgroundColor = 'rgba(0, 102, 255, 0.1)';
+            } else {
+                clearInterval(interval);
+                interval = null;
+                document.getElementById('js-input-auto-refresh-interval').parentNode.parentNode.parentNode.style.backgroundColor = '';
+                this.parentNode.parentNode.style.backgroundColor = '';
+            }
+        });
+        // end auto refresh
+
+        table.on('click', '.js-action-delete', function(e){
+            e.preventDefault();
+            $modalDelete.find('#product_delete_id').val($(this).parents('tr').find('td:eq(1)').text());
+            bsDeleteModal.show();
+        });
+
+        $modalDelete.on('submit', function(e){
+            e.preventDefault();
+
+            $.ajax({
+                url: $(this).attr('action'),
+                method: 'post',
+                data: $(this).serialize(),
+                success: function() {
+                    table.ajax.reload(null, false);
+
+                    setTimeout(function () {
+                        bsDeleteModal.hide();
+                    }, 200);
+                },
+                error: function() {
+
+                }
+            });
+        });
+
+        // Add select-all functionality
+        $('#select-all').on('click', function() {
+            var rows = $('.js-list').DataTable().rows({ 'search': 'applied' }).nodes();
+            $('input[type="checkbox"]', rows).prop('checked', this.checked);
+        });
+
+        // Handle delete selected items
+        $('#delete-selected-items').on('click', function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).show();
+        });
+
+        $('#confirm-delete-selected').on('click', function () {
+            var selectedIds = [];
+            $('.select_customer:checked').each(function () {
+                selectedIds.push($(this).data('id'));
+            });
+
+            if (selectedIds.length > 0) {
+                $.ajax({
+                    url: "{{ path('easy-product-manager_delete_selected') }}",
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    data: JSON.stringify({ product_ids: selectedIds }),
+                    success: function (response) {
+                        var message = '';
+
+                        if (response.deleted_products && response.deleted_products.length > 0) {
+                            message += 'Les produits suivants ont été supprimés avec succès : ' + response.deleted_products.join(', ') + '. ';
+                        }
+
+                        if (response.not_deleted_products && response.not_deleted_products.length > 0) {
+                            message += 'Les produits suivants n\'ont pas pu être supprimés : ' + response.not_deleted_products.join(', ') + '.';
+                        }
+
+                        if (message === '') {
+                            message = 'Aucun produit n\'a été supprimé.';
+                        }
+
+                        alert(message);
+
+                        $('.js-list').DataTable().ajax.reload();
+                        $('#select-all').prop('checked', false);
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).hide();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Une erreur est survenue : ' + error);
+                    }
+                });
+            } else {
+                alert('Aucun produit sélectionné.');
+            }
+        });
+
+        var visibilityAction = null;
+
+        $('#activate-visibility-selected-items').on('click', function () {
+            visibilityAction = 'activate';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
+        });
+
+        $('#deactivate-visibility-selected-items').on('click', function () {
+            visibilityAction = 'deactivate';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
+        });
+
+        $('#confirm-visibility-selected').on('click', function () {
+            if (visibilityAction === 'activate') {
+                changeVisibilitySelectedItems(1);
+            } else if (visibilityAction === 'deactivate') {
+                changeVisibilitySelectedItems(0);
+            }
+            visibilityAction = null;
+        });
+
+        function changeVisibilitySelectedItems(visibility) {
+            var selectedIds = [];
+            $('.select_customer:checked').each(function () {
+                selectedIds.push($(this).data('id'));
+            });
+
+            if (selectedIds.length > 0) {
+                $.ajax({
+                    url: "{{ path('easy-product-manager_change_visibility_selected') }}",
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    data: JSON.stringify({ product_ids: selectedIds, visibility: visibility }),
+                    success: function (response) {
+                        $('.js-list').DataTable().ajax.reload();
+                        $('#select-all').prop('checked', false);
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).hide();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Une erreur est survenue : ' + error);
+                    }
+                });
+            } else {
+                alert('Aucun produit sélectionné.');
+            }
+        }
+
+    }(jQuery, jQuery('#module-easy-product-manager')))
+</script>
+{% endblock %}

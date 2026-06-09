@@ -30,7 +30,13 @@ use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductSaleElementsQuery;
 use Thelia\TaxEngine\Calculator as LegacyCalculator;
 use Thelia\Tools\MoneyFormat;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
+use Thelia\Model\AttributeQuery;
+use Thelia\Model\BrandQuery;
+use Thelia\Model\CategoryQuery;
+use Thelia\Model\FeatureQuery;
+use Thelia\Model\AttributeCombinationQuery;
+use Twig\Environment;
 
 /**
  * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
@@ -41,27 +47,59 @@ class BackController extends ProductController
     public string $productImageColFile = "";
 
     #[Route('/{productId}', name: '_product', methods: ['GET'])]
-    public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext): ?Response
+    public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext, Environment $twig): ?Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
         }
 
         $request = $requestStack->getCurrentRequest();
+        $editCurrencyId = $request->getSession()->getAdminEditionCurrency()->getId();
 
         $product = ProductQuery::create()
             ->filterById($productId)
             ->findOne();
 
-        return $this->render('EasyProductManager/product', [
-            'form' => $this->hydrateObjectForm($parserContext, $product),
+        $theliaForm = $this->hydrateObjectForm($parserContext, $product);
+
+        // Determine whether the product has at least one attribute combination
+        $hasAtLeastOneCombination = false;
+        $defaultProductSaleElementId = 0;
+
+        $saleElements = ProductSaleElementsQuery::create()
+            ->filterByProductId((int) $productId)
+            ->find();
+
+        /** @var \Thelia\Model\ProductSaleElements $pse */
+        foreach ($saleElements as $pse) {
+            $combinationCount = AttributeCombinationQuery::create()
+                ->filterByProductSaleElementsId($pse->getId())
+                ->count();
+
+            if ($combinationCount > 0) {
+                $hasAtLeastOneCombination = true;
+            } else {
+                $defaultProductSaleElementId = $pse->getId();
+            }
+        }
+
+        $currency = CurrencyQuery::create()->findPk($editCurrencyId);
+        $currencySymbol = null !== $currency ? $currency->getSymbol() : '';
+        $currentCurrencyIsDefault = null !== $currency && $currency->getByDefault();
+
+        return new Response($twig->render('@EasyProductManagerModule/backOffice/default-twig/EasyProductManager/product.html.twig', [
+            'form' => $theliaForm->getForm()->createView(),
             'product_id' => $productId,
-            'edit_currency_id' => $request->getSession()->getAdminEditionCurrency()->getId()
-        ]);
+            'edit_currency_id' => $editCurrencyId,
+            'has_at_least_one_combination' => $hasAtLeastOneCombination,
+            'default_product_sale_element_id' => $defaultProductSaleElementId,
+            'currency_symbol' => $currencySymbol,
+            'current_currency_is_default' => $currentCurrencyIsDefault,
+        ]));
     }
 
     #[Route('', name: '_list', methods: ['GET', 'POST'])]
-    public function listAction(RequestStack $requestStack, EventDispatcherInterface $eventDispatcher)
+    public function listAction(RequestStack $requestStack, EventDispatcherInterface $eventDispatcher, Environment $twig)
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
@@ -277,10 +315,161 @@ class BackController extends ProductController
             return new JsonResponse($json);
         }
 
-        return $this->render('EasyProductManager/list', [
+        $locale = $request->getSession()->getAdminEditionLang()->getLocale();
+
+        return new Response($twig->render('@EasyProductManagerModule/backOffice/default-twig/EasyProductManager/list.html.twig', [
             'columnsDefinition' => $this->defineColumnsDefinition(),
-            'currencySymbol' => $request->getSession()->getAdminEditionCurrency()->getSymbol()
-        ]);
+            'currencySymbol' => $request->getSession()->getAdminEditionCurrency()->getSymbol(),
+            'categories' => $this->buildCategoryTree($locale),
+            'brands' => $this->buildBrandList($locale),
+            'langs' => $this->buildLangList(),
+            'countries' => $this->buildCountryList($locale),
+            'features' => $this->buildFeatureList($locale),
+            'attributes' => $this->buildAttributeList($locale),
+        ]));
+    }
+
+    /**
+     * Flat category tree, ordered hierarchically, with a level column for indentation.
+     * Replaces the Smarty {loop type="category-tree" category="0"}.
+     *
+     * @return array<int, array{id: int, title: string, level: int}>
+     */
+    protected function buildCategoryTree(string $locale, int $parentId = 0, int $level = 0): array
+    {
+        $result = [];
+
+        $categories = CategoryQuery::create()
+            ->filterByParent($parentId)
+            ->orderByPosition(Criteria::ASC)
+            ->find();
+
+        /** @var \Thelia\Model\Category $category */
+        foreach ($categories as $category) {
+            $category->setLocale($locale);
+            $result[] = [
+                'id' => $category->getId(),
+                'title' => (string) $category->getTitle(),
+                'level' => $level,
+            ];
+            $result = array_merge($result, $this->buildCategoryTree($locale, $category->getId(), $level + 1));
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    protected function buildBrandList(string $locale): array
+    {
+        $result = [];
+        $brands = BrandQuery::create()->orderByPosition(Criteria::ASC)->find();
+
+        /** @var \Thelia\Model\Brand $brand */
+        foreach ($brands as $brand) {
+            $brand->setLocale($locale);
+            $result[] = ['id' => $brand->getId(), 'title' => (string) $brand->getTitle()];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string, is_default: bool}>
+     */
+    protected function buildLangList(): array
+    {
+        $result = [];
+        $langs = LangQuery::create()->orderByPosition(Criteria::ASC)->find();
+
+        /** @var Lang $lang */
+        foreach ($langs as $lang) {
+            $result[] = [
+                'id' => $lang->getId(),
+                'title' => (string) $lang->getTitle(),
+                'is_default' => (bool) $lang->getByDefault(),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string, is_default: bool}>
+     */
+    protected function buildCountryList(string $locale): array
+    {
+        $result = [];
+        $countries = CountryQuery::create()->filterByVisible(1)->find();
+
+        /** @var \Thelia\Model\Country $country */
+        foreach ($countries as $country) {
+            $country->setLocale($locale);
+            $result[] = [
+                'id' => $country->getId(),
+                'title' => (string) $country->getTitle(),
+                'is_default' => (bool) $country->getByDefault(),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string, availabilities: array<int, array{id: int, title: string}>}>
+     */
+    protected function buildFeatureList(string $locale): array
+    {
+        $result = [];
+        $features = FeatureQuery::create()->orderByPosition(Criteria::ASC)->find();
+
+        /** @var \Thelia\Model\Feature $feature */
+        foreach ($features as $feature) {
+            $feature->setLocale($locale);
+
+            $availabilities = [];
+            foreach ($feature->getFeatureAvs() as $av) {
+                $av->setLocale($locale);
+                $availabilities[] = ['id' => $av->getId(), 'title' => (string) $av->getTitle()];
+            }
+
+            $result[] = [
+                'id' => $feature->getId(),
+                'title' => (string) $feature->getTitle(),
+                'availabilities' => $availabilities,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string, availabilities: array<int, array{id: int, title: string}>}>
+     */
+    protected function buildAttributeList(string $locale): array
+    {
+        $result = [];
+        $attributes = AttributeQuery::create()->orderByPosition(Criteria::ASC)->find();
+
+        /** @var \Thelia\Model\Attribute $attribute */
+        foreach ($attributes as $attribute) {
+            $attribute->setLocale($locale);
+
+            $availabilities = [];
+            foreach ($attribute->getAttributeAvs() as $av) {
+                $av->setLocale($locale);
+                $availabilities[] = ['id' => $av->getId(), 'title' => (string) $av->getTitle()];
+            }
+
+            $result[] = [
+                'id' => $attribute->getId(),
+                'title' => (string) $attribute->getTitle(),
+                'availabilities' => $availabilities,
+            ];
+        }
+
+        return $result;
     }
 
     protected function filterByCategory(Request $request, ProductQuery $query)

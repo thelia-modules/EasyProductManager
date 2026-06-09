@@ -1,0 +1,244 @@
+{% if not is_granted('VIEW', 'admin.product') %}
+    {{ 'Sorry, you are not allowed to perform this action.'|trans }}
+{% else %}
+<div class="form-container">
+    {% if not has_at_least_one_combination %}
+        {{ form_start(form, {
+            attr: { class: 'clearfix', method: 'POST' },
+            action: path('admin.product.default-price.update')
+        }) }}
+
+            <input type="hidden" name="product_id" value="{{ product_id }}" />
+            <input type="hidden" name="current_tab" value="prices" />
+
+            {{ form_widget(form._token) }}
+
+            {% if form.product_id is defined %}
+                <input type="hidden" name="{{ form.product_id.vars.full_name }}" value="{{ product_id }}" />
+                {% do form.product_id.setRendered %}
+            {% endif %}
+
+            {% if form.product_sale_element_id is defined %}
+                <input type="hidden" name="{{ form.product_sale_element_id.vars.full_name }}" value="{{ default_product_sale_element_id }}" />
+                {% do form.product_sale_element_id.setRendered %}
+            {% endif %}
+
+            {% if form.isdefault is defined %}
+                <input type="hidden" name="{{ form.isdefault.vars.full_name }}" value="{{ form.isdefault.vars.value }}" />
+                {% do form.isdefault.setRendered %}
+            {% endif %}
+
+            {% if form.reference is defined %}
+                <input type="hidden" name="{{ form.reference.vars.full_name }}" value="{{ form.reference.vars.value }}" />
+                {% do form.reference.setRendered %}
+            {% endif %}
+
+            {% if form.success_url is defined %}
+                <input type="hidden" name="{{ form.success_url.vars.full_name }}" value="/admin/categories" />
+                {% do form.success_url.setRendered %}
+            {% endif %}
+
+            {% if form.currency is defined %}
+                <input type="hidden" name="{{ form.currency.vars.full_name }}" value="{{ edit_currency_id }}" />
+                {% do form.currency.setRendered %}
+            {% endif %}
+
+            {% if form.vars.errors|length %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="alert alert-danger">{{ form_errors(form) }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <p class="title title-without-tabs">{{ 'Pricing'|trans({}, 'bo.default') }}</p>
+            <p>{{ 'The default pricing is used when no combination is defined.'|trans({}, 'bo.default') }}</p>
+
+            <div class="row">
+                {# Pricing #}
+                <div class="col-md-4">
+                    <div class="card card-body mb-3">
+                        <p class="title title-without-tabs">{{ 'Pricing'|trans({}, 'bo.default') }}</p>
+
+                        {% if form.use_exchange_rate is defined %}
+                            {% if current_currency_is_default %}
+                                <input type="hidden" name="{{ form.use_exchange_rate.vars.full_name }}" value="0">
+                                {% do form.use_exchange_rate.setRendered %}
+                            {% else %}
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input use_exchange_rate_box" data-pse-id="{{ default_product_sale_element_id }}" name="{{ form.use_exchange_rate.vars.full_name }}" value="1" {{ form.use_exchange_rate.vars.value ? 'checked' : '' }}>
+                                    <label class="form-check-label">{{ form.use_exchange_rate.vars.label }}</label>
+                                </div>
+                                {% do form.use_exchange_rate.setRendered %}
+                            {% endif %}
+                        {% endif %}
+
+                        {% if form.price is defined %}
+                            <div class="mb-3">
+                                <label for="price_without_tax" class="form-label">{{ form.price.vars.label }} : </label>
+                                <div class="input-group">
+                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="price-without-tax" data-rel-price="price_with_tax" type="text" id="price_without_tax" required="required" name="{{ form.price.vars.full_name }}" class="price_field automatic_price_field form-control{{ form.price.vars.errors|length ? ' is-invalid' : '' }}" value="{{ form.price.vars.value }}" placeholder="{{ 'Price excl. taxes'|trans({}, 'bo.default') }}">
+                                    <span class="input-group-text">{{ currency_symbol }}</span>
+                                </div>
+                            </div>
+                            {% do form.price.setRendered %}
+                        {% endif %}
+
+                        {% if form.price_with_tax is defined %}
+                            <div class="mb-3">
+                                <label for="price_with_tax" class="form-label">{{ 'Product price including taxes'|trans({}, 'bo.default') }} : </label>
+                                <div class="input-group">
+                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="price-with-tax" data-rel-price="price_without_tax" type="text" id="price_with_tax" name="{{ form.price_with_tax.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.price_with_tax.vars.value }}" placeholder="{{ 'Price incl. taxes'|trans({}, 'bo.default') }}">
+                                    <span class="input-group-text">{{ currency_symbol }}</span>
+                                </div>
+                            </div>
+                            {% do form.price_with_tax.setRendered %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Stock #}
+                <div class="col-md-4">
+                    <div class="card card-body mb-3">
+                        <p class="title title-without-tabs">{{ 'Stock'|trans({}, 'bo.default') }}</p>
+
+                        {% if form.ean_code is defined %}
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.ean_code.vars.label }} : </label>
+                                <input type="text" name="{{ form.ean_code.vars.full_name }}" class="form-control{{ form.ean_code.vars.errors|length ? ' is-invalid' : '' }}" value="{{ form.ean_code.vars.value }}" placeholder="{{ 'Product EAN Code'|trans({}, 'bo.default') }}">
+                            </div>
+                            {% do form.ean_code.setRendered %}
+                        {% endif %}
+
+                        {% if form.weight is defined %}
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.weight.vars.label }} : </label>
+                                <div class="input-group">
+                                    <input type="text" name="{{ form.weight.vars.full_name }}" class="form-control" value="{{ form.weight.vars.value }}" placeholder="{{ 'Product weight'|trans({}, 'bo.default') }}">
+                                    <span class="input-group-text">{{ 'Kg'|trans({}, 'bo.default') }}</span>
+                                </div>
+                            </div>
+                            {% do form.weight.setRendered %}
+                        {% endif %}
+
+                        {% if form.quantity is defined %}
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.quantity.vars.label }} : </label>
+                                <input type="text" required="required" name="{{ form.quantity.vars.full_name }}" class="form-control" value="{{ form.quantity.vars.value }}" placeholder="{{ 'Current quantity'|trans({}, 'bo.default') }}">
+                            </div>
+                            {% do form.quantity.setRendered %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Promotion #}
+                <div class="col-md-4">
+                    <div class="card card-body mb-3">
+                        <p class="title title-without-tabs">{{ 'Promotion'|trans({}, 'bo.default') }}</p>
+
+                        {% if form.sale_price is defined %}
+                            <div class="mb-3">
+                                <label for="sale_price_without_tax" class="form-label">{{ form.sale_price.vars.label }} : </label>
+                                <div class="input-group">
+                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="sale-price-without-tax" data-rel-price="sale_price_with_tax" type="text" id="sale_price_without_tax" required="required" name="{{ form.sale_price.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.sale_price.vars.value }}" placeholder="{{ 'Product price'|trans({}, 'bo.default') }}">
+                                    <span class="input-group-text">{{ currency_symbol }}</span>
+                                </div>
+                            </div>
+                            {% do form.sale_price.setRendered %}
+                        {% endif %}
+
+                        {% if form.sale_price_with_tax is defined %}
+                            <div class="mb-3">
+                                <label for="sale_price_with_tax" class="form-label">{{ form.sale_price_with_tax.vars.label }} : </label>
+                                <div class="input-group">
+                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="sale-price-with-tax" data-rel-price="sale_price_without_tax" type="text" id="sale_price_with_tax" name="{{ form.sale_price_with_tax.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.sale_price_with_tax.vars.value }}" placeholder="{{ 'Sale price incl. taxes'|trans({}, 'bo.default') }}">
+                                    <span class="input-group-text">{{ currency_symbol }}</span>
+                                </div>
+                            </div>
+                            {% do form.sale_price_with_tax.setRendered %}
+                        {% endif %}
+
+                        {% if form.onsale is defined %}
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" name="{{ form.onsale.vars.full_name }}" value="1" {{ form.onsale.vars.value ? 'checked' : '' }}>
+                                <label class="form-check-label">{{ form.onsale.vars.label }}</label>
+                            </div>
+                            {% do form.onsale.setRendered %}
+                        {% endif %}
+
+                        {% if form.isnew is defined %}
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" name="{{ form.isnew.vars.full_name }}" value="1" {{ form.isnew.vars.value ? 'checked' : '' }}>
+                                <label class="form-check-label">{{ form.isnew.vars.label }}</label>
+                            </div>
+                            {% do form.isnew.setRendered %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> {{ 'Save'|trans({}, 'bo.default') }}</button>
+            </div>
+        {{ form_end(form) }}
+    {% else %}
+        <div class="alert alert-info">
+            {{ 'This product has combinations. Please edit prices from the product page.'|trans({}, 'easyproductmanager') }}
+            <a href="{{ path('admin.products.update', {product_id: product_id}) }}" class="btn btn-primary btn-sm">{{ 'Edit product'|trans({}, 'easyproductmanager') }}</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    (function($){
+        $('.use_exchange_rate_box').on('change', function() {
+            if ($(this).is(':checked')) {
+                var pse_id = $(this).data('pse-id');
+                $('.price_field').prop('readonly', true);
+                $.ajax({
+                    url: '/admin/product/load-converted-prices',
+                    data: { product_sale_element_id: pse_id, currency_id: {{ edit_currency_id }} },
+                    type: 'get',
+                    dataType: 'json',
+                    success: function(json) {
+                        $('input[data-pse-id="'+pse_id+'"][data-price-type="price-with-tax"]').val(json.price_with_tax);
+                        $('input[data-pse-id="'+pse_id+'"][data-price-type="price-without-tax"]').val(json.price_without_tax);
+                        $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-with-tax"]').val(json.sale_price_with_tax);
+                        $('input[data-pse-id="'+pse_id+'"][data-price-type="sale-price-without-tax"]').val(json.sale_price_without_tax);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        alert("Failed to get converted prices. Please try again. (" + errorThrown + ")");
+                    }
+                });
+            } else {
+                $('.price_field').prop('readonly', false);
+            }
+        });
+
+        function update_price(price, price_type, dest_field_id) {
+            var operation = '';
+            if (price_type.indexOf('with-tax') !== -1) operation = 'from_tax';
+            else if (price_type.indexOf('without-tax') !== -1) operation = 'to_tax';
+
+            $.ajax({
+                url: '/admin/product/calculate-price',
+                data: { price: price, action: operation, product_id: {{ product_id }} },
+                type: 'get',
+                dataType: 'json',
+                success: function(json) {
+                    $('#' + dest_field_id).val(json.result);
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert("Failed to get prices. Please try again. (" + errorThrown + ")");
+                }
+            });
+        }
+
+        $('.automatic_price_field').on('keyup change', function() {
+            var price = $(this).val().replace(",", ".");
+            $(this).val(price);
+            update_price(price, $(this).data('price-type'), $(this).data('rel-price'));
+        });
+    }(jQuery));
+</script>
+{% endif %}
