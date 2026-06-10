@@ -1,6 +1,7 @@
-<li class="{{ admin_current_location starts with 'easy-product-manager' ? 'active' : '' }}" id="module_menu_easy_product_manager">
-    <a title="Modules" href="{{ path('easy-product-manager_list') }}">
-        <span class="icon-catalog"></span>
+{% set is_active = admin_current_location is defined and admin_current_location starts with 'easy-product-manager' %}
+<li class="nav-item" id="module_menu_easy_product_manager">
+    <a class="nav-link {{ is_active ? 'active' : '' }}" title="{{ 'Gérer les produits'|trans({}, 'easyproductmanager') }}" href="{{ path('easy-product-manager_list') }}">
+        <i class="bi bi-collection me-2" aria-hidden="true"></i>
         <span class="item-text">{{ 'Gérer les produits'|trans({}, 'easyproductmanager') }}</span>
     </a>
 </li>
