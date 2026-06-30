@@ -30,6 +30,7 @@ use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductSaleElementsQuery;
 use Thelia\TaxEngine\Calculator as LegacyCalculator;
 use Thelia\Tools\MoneyFormat;
+use Thelia\Tools\TokenProvider;
 use Symfony\Component\Routing\Attribute\Route;
 use Thelia\Model\AttributeQuery;
 use Thelia\Model\BrandQuery;
@@ -821,11 +822,16 @@ class BackController extends ProductController
      * @throws \JsonException
      */
     #[Route('/delete-selected', name: '_delete_selected', methods: ['POST'])]
-    public function deleteSelectedAction(Request $request)
+    public function deleteSelectedAction(Request $request, TokenProvider $tokenProvider): Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::DELETE)) {
             return $response;
         }
+
+        // Check CSRF token
+        $tokenProvider->checkToken(
+            (string) $request->query->get('_token')
+        );
 
         $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $productIds = $data['product_ids'] ?? [];
@@ -858,11 +864,16 @@ class BackController extends ProductController
      * @throws \JsonException
      */
     #[Route('/change-visibility-selected', name: '_change_visibility_selected', methods: ['POST'])]
-    public function changeVisibilitySelectedAction(Request $request)
+    public function changeVisibilitySelectedAction(Request $request, TokenProvider $tokenProvider): Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
         }
+
+        // Check CSRF token
+        $tokenProvider->checkToken(
+            (string) $request->query->get('_token')
+        );
 
         $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $productIds = $data['product_ids'] ?? [];

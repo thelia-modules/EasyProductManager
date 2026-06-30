@@ -829,7 +829,7 @@
             });
 
             if (selectedIds.length > 0) {
-                fetch("{{ path('easy-product-manager_delete_selected') }}", {
+                fetch("{{ path('easy-product-manager_delete_selected') }}?_token={{ assignToken() }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -894,7 +894,7 @@
             });
 
             if (selectedIds.length > 0) {
-                fetch("{{ path('easy-product-manager_change_visibility_selected') }}", {
+                fetch("{{ path('easy-product-manager_change_visibility_selected') }}?_token={{ assignToken() }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
