@@ -61,6 +61,10 @@ class BackController extends ProductController
             ->filterById($productId)
             ->findOne();
 
+        if (null === $product) {
+            return $this->pageNotFound();
+        }
+
         $theliaForm = $this->hydrateObjectForm($parserContext, $product);
 
         // Determine whether the product has at least one attribute combination
@@ -221,7 +225,7 @@ class BackController extends ProductController
 
             $baseSourceFilePath = THELIA_LOCAL_DIR . 'media' . DS . 'images';
 
-            $country = $this->getCountry($request);
+            $country = $this->getCountry($request) ?? CountryQuery::create()->filterByByDefault(1)->findOne();
             $currency = $this->getCurrency($request);
 
             $moneyFormat = MoneyFormat::getInstance($request);
