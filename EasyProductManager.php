@@ -18,9 +18,10 @@ class EasyProductManager extends BaseModule
     {
         $servicesConfigurator->load(self::getModuleCode().'\\', __DIR__)
             ->exclude([
-                __DIR__.'/I18n/*',
-                __DIR__.'/Config/**/*.php',
-                __DIR__.'/EasyProductManager.php',
+                __DIR__.'/I18n',
+                __DIR__.'/Config',
+                __DIR__.'/Tests',
+                __FILE__,
             ])
             ->autowire(true)
             ->autoconfigure(true);
