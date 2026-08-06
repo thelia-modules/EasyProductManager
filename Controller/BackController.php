@@ -6,14 +6,13 @@ use Propel\Runtime\ActiveQuery\Criteria;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Thelia\Controller\Admin\ProductController;
+use Thelia\Controller\Admin\BaseAdminController;
 use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
 use Thelia\Core\HttpFoundation\JsonResponse;
 use Thelia\Core\HttpFoundation\Request;
 use Thelia\Core\Security\AccessManager;
 use Thelia\Core\Security\Resource\AdminResources;
-use Thelia\Core\Template\ParserContext;
 use Thelia\Domain\Taxation\TaxEngine\Calculator;
 use Thelia\Model\CountryQuery;
 use Thelia\Model\CurrencyQuery;
@@ -28,7 +27,6 @@ use Thelia\Model\Product;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductSaleElementsQuery;
-use Thelia\TaxEngine\Calculator as LegacyCalculator;
 use Thelia\Tools\MoneyFormat;
 use Thelia\Tools\TokenProvider;
 use Symfony\Component\Routing\Attribute\Route;
@@ -43,12 +41,12 @@ use Twig\Environment;
  * @author Gilles Bourgeat >gilles.bourgeat@gmail.com>
  */
 #[Route('/admin/easy-product-manager/list', name: 'easy-product-manager')]
-class BackController extends ProductController
+class BackController extends BaseAdminController
 {
     public string $productImageColFile = "";
 
     #[Route('/{productId}', name: '_product', methods: ['GET'])]
-    public function productAction(RequestStack $requestStack, $productId, ParserContext $parserContext, Environment $twig): ?Response
+    public function productAction(RequestStack $requestStack, $productId, Environment $twig): ?Response
     {
         if (null !== $response = $this->checkAuth(AdminResources::PRODUCT, [], AccessManager::UPDATE)) {
             return $response;
@@ -65,11 +63,9 @@ class BackController extends ProductController
             return $this->pageNotFound();
         }
 
-        $theliaForm = $this->hydrateObjectForm($parserContext, $product);
-
         // Determine whether the product has at least one attribute combination
         $hasAtLeastOneCombination = false;
-        $defaultProductSaleElementId = 0;
+        $defaultProductSaleElement = null;
 
         $saleElements = ProductSaleElementsQuery::create()
             ->filterByProductId((int) $productId)
@@ -84,7 +80,7 @@ class BackController extends ProductController
             if ($combinationCount > 0) {
                 $hasAtLeastOneCombination = true;
             } else {
-                $defaultProductSaleElementId = $pse->getId();
+                $defaultProductSaleElement = $pse;
             }
         }
 
@@ -93,14 +89,61 @@ class BackController extends ProductController
         $currentCurrencyIsDefault = null !== $currency && $currency->getByDefault();
 
         return new Response($twig->render('@EasyProductManagerModule/backOffice/default-twig/EasyProductManager/product.html.twig', [
-            'form' => $theliaForm->getForm()->createView(),
+            'fields' => $this->defaultPriceFields($product, $defaultProductSaleElement, $editCurrencyId),
             'product_id' => $productId,
             'edit_currency_id' => $editCurrencyId,
             'has_at_least_one_combination' => $hasAtLeastOneCombination,
-            'default_product_sale_element_id' => $defaultProductSaleElementId,
+            'default_product_sale_element_id' => $defaultProductSaleElement?->getId() ?? 0,
             'currency_symbol' => $currencySymbol,
             'current_currency_is_default' => $currentCurrencyIsDefault,
         ]));
+    }
+
+    /**
+     * Values of the "default price" quick-edit form.
+     *
+     * Migration Thelia 3 : ce formulaire etait obtenu par
+     * `AbstractCrudController::hydrateObjectForm()` heritee de
+     * `Thelia\Controller\Admin\ProductController`. Ce controleur concret a quitte le coeur
+     * en T3 (cf. D-008 du journal) et le module est desormais rattache a
+     * `BaseAdminController`, qui n'expose pas cette methode : l'ecran levait un
+     * `undefined method hydrateObjectForm` (500). Le formulaire produit du coeur
+     * (`ProductModificationForm`) n'existe plus non plus en T3.
+     *
+     * L'action cible (`admin.product.combination.defaut-price.update`) lit directement les
+     * parametres de la requete et ne valide aucun jeton : on prepare donc simplement les
+     * valeurs courantes de la PSE par defaut et le template rend des champs nommes comme
+     * l'action les attend. Les prix TTC sont calcules cote navigateur et ignores par
+     * l'action, ils ne sont donc pas prepares ici.
+     *
+     * @return array<string, string|int|bool>
+     */
+    private function defaultPriceFields(
+        Product $product,
+        ?\Thelia\Model\ProductSaleElements $pse,
+        int $editCurrencyId,
+    ): array {
+        $productPrice = null;
+
+        if (null !== $pse) {
+            $productPrice = \Thelia\Model\ProductPriceQuery::create()
+                ->filterByProductSaleElementsId($pse->getId())
+                ->filterByCurrencyId($editCurrencyId)
+                ->findOne();
+        }
+
+        return [
+            'reference' => (string) $pse?->getRef(),
+            'ean_code' => (string) $pse?->getEanCode(),
+            'weight' => (string) ($pse?->getWeight() ?? '0'),
+            'quantity' => (string) ($pse?->getQuantity() ?? '0'),
+            'price' => (string) ($productPrice?->getPrice() ?? '0'),
+            'sale_price' => (string) ($productPrice?->getPromoPrice() ?? '0'),
+            'onsale' => 1 === (int) $pse?->getPromo(),
+            'isnew' => 1 === (int) $pse?->getNewness(),
+            'use_exchange_rate' => 1 === (int) ($productPrice?->getFromDefaultCurrency() ?? 0),
+            'tax_rule' => (int) $product->getTaxRuleId(),
+        ];
     }
 
     #[Route('', name: '_list', methods: ['GET', 'POST'])]
@@ -230,9 +273,7 @@ class BackController extends ProductController
 
             $moneyFormat = MoneyFormat::getInstance($request);
 
-            $taxCalculator = class_exists(LegacyCalculator::class)
-                ? new LegacyCalculator()
-                : new Calculator();
+            $taxCalculator = new Calculator();
 
             /** @var Product $product */
             foreach ($products as $product) {

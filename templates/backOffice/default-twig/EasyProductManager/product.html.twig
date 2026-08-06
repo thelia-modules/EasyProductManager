@@ -1,55 +1,26 @@
+{# Quick "default price" editor, loaded in the EasyProductManager list modal.
+
+   Migration Thelia 3: this screen used to render a Thelia FormView obtained from
+   AbstractCrudController::hydrateObjectForm(), a method that left the core together with
+   the concrete admin ProductController (journal D-008); the core ProductModificationForm
+   is gone too. The target action reads plain request parameters and validates no token,
+   so the controller now prepares the current values in `fields` and the inputs below are
+   named exactly as that action expects. Taxed prices are computed in the browser and
+   ignored by the action, hence they have no server-side counterpart. #}
 {% if not is_granted('VIEW', 'admin.product') %}
     {{ 'Sorry, you are not allowed to perform this action.'|trans }}
 {% else %}
-<div class="form-container">
+<div class="form-container" data-testid="easy-product-manager-product">
     {% if not has_at_least_one_combination %}
-        {{ form_start(form, {
-            attr: { class: 'clearfix', method: 'POST' },
-            action: path('admin.product.default-price.update')
-        }) }}
-
-            <input type="hidden" name="product_id" value="{{ product_id }}" />
-            <input type="hidden" name="current_tab" value="prices" />
-
-            {{ form_widget(form._token) }}
-
-            {% if form.product_id is defined %}
-                <input type="hidden" name="{{ form.product_id.vars.full_name }}" value="{{ product_id }}" />
-                {% do form.product_id.setRendered %}
-            {% endif %}
-
-            {% if form.product_sale_element_id is defined %}
-                <input type="hidden" name="{{ form.product_sale_element_id.vars.full_name }}" value="{{ default_product_sale_element_id }}" />
-                {% do form.product_sale_element_id.setRendered %}
-            {% endif %}
-
-            {% if form.isdefault is defined %}
-                <input type="hidden" name="{{ form.isdefault.vars.full_name }}" value="{{ form.isdefault.vars.value }}" />
-                {% do form.isdefault.setRendered %}
-            {% endif %}
-
-            {% if form.reference is defined %}
-                <input type="hidden" name="{{ form.reference.vars.full_name }}" value="{{ form.reference.vars.value }}" />
-                {% do form.reference.setRendered %}
-            {% endif %}
-
-            {% if form.success_url is defined %}
-                <input type="hidden" name="{{ form.success_url.vars.full_name }}" value="/admin/categories" />
-                {% do form.success_url.setRendered %}
-            {% endif %}
-
-            {% if form.currency is defined %}
-                <input type="hidden" name="{{ form.currency.vars.full_name }}" value="{{ edit_currency_id }}" />
-                {% do form.currency.setRendered %}
-            {% endif %}
-
-            {% if form.vars.errors|length %}
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="alert alert-danger">{{ form_errors(form) }}</div>
-                    </div>
-                </div>
-            {% endif %}
+        <form action="{{ path('admin.product.combination.defaut-price.update') }}" method="post" class="clearfix"
+              data-testid="easy-product-manager-price-form">
+            <input type="hidden" name="product_id" value="{{ product_id }}">
+            <input type="hidden" name="current_tab" value="prices">
+            <input type="hidden" name="product_sale_element_id" value="{{ default_product_sale_element_id }}">
+            <input type="hidden" name="isdefault" value="1">
+            <input type="hidden" name="reference" value="{{ fields.reference }}">
+            <input type="hidden" name="currency" value="{{ edit_currency_id }}">
+            <input type="hidden" name="tax_rule" value="{{ fields.tax_rule }}">
 
             <p class="title title-without-tabs">{{ 'Pricing'|trans({}, 'bo.default') }}</p>
             <p>{{ 'The default pricing is used when no combination is defined.'|trans({}, 'bo.default') }}</p>
@@ -60,40 +31,42 @@
                     <div class="card card-body mb-3">
                         <p class="title title-without-tabs">{{ 'Pricing'|trans({}, 'bo.default') }}</p>
 
-                        {% if form.use_exchange_rate is defined %}
-                            {% if current_currency_is_default %}
-                                <input type="hidden" name="{{ form.use_exchange_rate.vars.full_name }}" value="0">
-                                {% do form.use_exchange_rate.setRendered %}
-                            {% else %}
-                                <div class="mb-3 form-check">
-                                    <input type="checkbox" class="form-check-input use_exchange_rate_box" data-pse-id="{{ default_product_sale_element_id }}" name="{{ form.use_exchange_rate.vars.full_name }}" value="1" {{ form.use_exchange_rate.vars.value ? 'checked' : '' }}>
-                                    <label class="form-check-label">{{ form.use_exchange_rate.vars.label }}</label>
-                                </div>
-                                {% do form.use_exchange_rate.setRendered %}
-                            {% endif %}
+                        {% if current_currency_is_default %}
+                            <input type="hidden" name="use_exchange_rate" value="0">
+                        {% else %}
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input use_exchange_rate_box"
+                                       id="use_exchange_rate"
+                                       data-pse-id="{{ default_product_sale_element_id }}"
+                                       name="use_exchange_rate" value="1"
+                                       {{ fields.use_exchange_rate ? 'checked' : '' }}>
+                                <label class="form-check-label" for="use_exchange_rate">{{ 'Use the currency exchange rate'|trans({}, 'bo.default') }}</label>
+                            </div>
                         {% endif %}
 
-                        {% if form.price is defined %}
-                            <div class="mb-3">
-                                <label for="price_without_tax" class="form-label">{{ form.price.vars.label }} : </label>
-                                <div class="input-group">
-                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="price-without-tax" data-rel-price="price_with_tax" type="text" id="price_without_tax" required="required" name="{{ form.price.vars.full_name }}" class="price_field automatic_price_field form-control{{ form.price.vars.errors|length ? ' is-invalid' : '' }}" value="{{ form.price.vars.value }}" placeholder="{{ 'Price excl. taxes'|trans({}, 'bo.default') }}">
-                                    <span class="input-group-text">{{ currency_symbol }}</span>
-                                </div>
+                        <div class="mb-3">
+                            <label for="price_without_tax" class="form-label">{{ 'Product price excluding taxes'|trans({}, 'bo.default') }} :</label>
+                            <div class="input-group">
+                                <input data-pse-id="{{ default_product_sale_element_id }}"
+                                       data-price-type="price-without-tax" data-rel-price="price_with_tax"
+                                       type="text" id="price_without_tax" required="required" name="price"
+                                       class="price_field automatic_price_field form-control"
+                                       value="{{ fields.price }}"
+                                       placeholder="{{ 'Price excl. taxes'|trans({}, 'bo.default') }}">
+                                <span class="input-group-text">{{ currency_symbol }}</span>
                             </div>
-                            {% do form.price.setRendered %}
-                        {% endif %}
+                        </div>
 
-                        {% if form.price_with_tax is defined %}
-                            <div class="mb-3">
-                                <label for="price_with_tax" class="form-label">{{ 'Product price including taxes'|trans({}, 'bo.default') }} : </label>
-                                <div class="input-group">
-                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="price-with-tax" data-rel-price="price_without_tax" type="text" id="price_with_tax" name="{{ form.price_with_tax.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.price_with_tax.vars.value }}" placeholder="{{ 'Price incl. taxes'|trans({}, 'bo.default') }}">
-                                    <span class="input-group-text">{{ currency_symbol }}</span>
-                                </div>
+                        <div class="mb-3">
+                            <label for="price_with_tax" class="form-label">{{ 'Product price including taxes'|trans({}, 'bo.default') }} :</label>
+                            <div class="input-group">
+                                <input data-pse-id="{{ default_product_sale_element_id }}"
+                                       data-price-type="price-with-tax" data-rel-price="price_without_tax"
+                                       type="text" id="price_with_tax" class="price_field automatic_price_field form-control"
+                                       value="" placeholder="{{ 'Price incl. taxes'|trans({}, 'bo.default') }}">
+                                <span class="input-group-text">{{ currency_symbol }}</span>
                             </div>
-                            {% do form.price_with_tax.setRendered %}
-                        {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -102,32 +75,29 @@
                     <div class="card card-body mb-3">
                         <p class="title title-without-tabs">{{ 'Stock'|trans({}, 'bo.default') }}</p>
 
-                        {% if form.ean_code is defined %}
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.ean_code.vars.label }} : </label>
-                                <input type="text" name="{{ form.ean_code.vars.full_name }}" class="form-control{{ form.ean_code.vars.errors|length ? ' is-invalid' : '' }}" value="{{ form.ean_code.vars.value }}" placeholder="{{ 'Product EAN Code'|trans({}, 'bo.default') }}">
-                            </div>
-                            {% do form.ean_code.setRendered %}
-                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label" for="ean_code">{{ 'EAN Code'|trans({}, 'bo.default') }} :</label>
+                            <input type="text" id="ean_code" name="ean_code" class="form-control"
+                                   value="{{ fields.ean_code }}"
+                                   placeholder="{{ 'Product EAN Code'|trans({}, 'bo.default') }}">
+                        </div>
 
-                        {% if form.weight is defined %}
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.weight.vars.label }} : </label>
-                                <div class="input-group">
-                                    <input type="text" name="{{ form.weight.vars.full_name }}" class="form-control" value="{{ form.weight.vars.value }}" placeholder="{{ 'Product weight'|trans({}, 'bo.default') }}">
-                                    <span class="input-group-text">{{ 'Kg'|trans({}, 'bo.default') }}</span>
-                                </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="weight">{{ 'Weight'|trans({}, 'bo.default') }} :</label>
+                            <div class="input-group">
+                                <input type="text" id="weight" name="weight" class="form-control"
+                                       value="{{ fields.weight }}"
+                                       placeholder="{{ 'Product weight'|trans({}, 'bo.default') }}">
+                                <span class="input-group-text">{{ 'Kg'|trans({}, 'bo.default') }}</span>
                             </div>
-                            {% do form.weight.setRendered %}
-                        {% endif %}
+                        </div>
 
-                        {% if form.quantity is defined %}
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.quantity.vars.label }} : </label>
-                                <input type="text" required="required" name="{{ form.quantity.vars.full_name }}" class="form-control" value="{{ form.quantity.vars.value }}" placeholder="{{ 'Current quantity'|trans({}, 'bo.default') }}">
-                            </div>
-                            {% do form.quantity.setRendered %}
-                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label" for="quantity">{{ 'Quantity'|trans({}, 'bo.default') }} :</label>
+                            <input type="text" id="quantity" required="required" name="quantity" class="form-control"
+                                   value="{{ fields.quantity }}"
+                                   placeholder="{{ 'Current quantity'|trans({}, 'bo.default') }}">
+                        </div>
                     </div>
                 </div>
 
@@ -136,51 +106,51 @@
                     <div class="card card-body mb-3">
                         <p class="title title-without-tabs">{{ 'Promotion'|trans({}, 'bo.default') }}</p>
 
-                        {% if form.sale_price is defined %}
-                            <div class="mb-3">
-                                <label for="sale_price_without_tax" class="form-label">{{ form.sale_price.vars.label }} : </label>
-                                <div class="input-group">
-                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="sale-price-without-tax" data-rel-price="sale_price_with_tax" type="text" id="sale_price_without_tax" required="required" name="{{ form.sale_price.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.sale_price.vars.value }}" placeholder="{{ 'Product price'|trans({}, 'bo.default') }}">
-                                    <span class="input-group-text">{{ currency_symbol }}</span>
-                                </div>
+                        <div class="mb-3">
+                            <label for="sale_price_without_tax" class="form-label">{{ 'Sale price excluding taxes'|trans({}, 'bo.default') }} :</label>
+                            <div class="input-group">
+                                <input data-pse-id="{{ default_product_sale_element_id }}"
+                                       data-price-type="sale-price-without-tax" data-rel-price="sale_price_with_tax"
+                                       type="text" id="sale_price_without_tax" required="required" name="sale_price"
+                                       class="price_field automatic_price_field form-control"
+                                       value="{{ fields.sale_price }}"
+                                       placeholder="{{ 'Product price'|trans({}, 'bo.default') }}">
+                                <span class="input-group-text">{{ currency_symbol }}</span>
                             </div>
-                            {% do form.sale_price.setRendered %}
-                        {% endif %}
+                        </div>
 
-                        {% if form.sale_price_with_tax is defined %}
-                            <div class="mb-3">
-                                <label for="sale_price_with_tax" class="form-label">{{ form.sale_price_with_tax.vars.label }} : </label>
-                                <div class="input-group">
-                                    <input data-pse-id="{{ default_product_sale_element_id }}" data-price-type="sale-price-with-tax" data-rel-price="sale_price_without_tax" type="text" id="sale_price_with_tax" name="{{ form.sale_price_with_tax.vars.full_name }}" class="price_field automatic_price_field form-control" value="{{ form.sale_price_with_tax.vars.value }}" placeholder="{{ 'Sale price incl. taxes'|trans({}, 'bo.default') }}">
-                                    <span class="input-group-text">{{ currency_symbol }}</span>
-                                </div>
+                        <div class="mb-3">
+                            <label for="sale_price_with_tax" class="form-label">{{ 'Sale price incl. taxes'|trans({}, 'bo.default') }} :</label>
+                            <div class="input-group">
+                                <input data-pse-id="{{ default_product_sale_element_id }}"
+                                       data-price-type="sale-price-with-tax" data-rel-price="sale_price_without_tax"
+                                       type="text" id="sale_price_with_tax" class="price_field automatic_price_field form-control"
+                                       value="" placeholder="{{ 'Sale price incl. taxes'|trans({}, 'bo.default') }}">
+                                <span class="input-group-text">{{ currency_symbol }}</span>
                             </div>
-                            {% do form.sale_price_with_tax.setRendered %}
-                        {% endif %}
+                        </div>
 
-                        {% if form.onsale is defined %}
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" name="{{ form.onsale.vars.full_name }}" value="1" {{ form.onsale.vars.value ? 'checked' : '' }}>
-                                <label class="form-check-label">{{ form.onsale.vars.label }}</label>
-                            </div>
-                            {% do form.onsale.setRendered %}
-                        {% endif %}
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="onsale" name="onsale" value="1"
+                                   {{ fields.onsale ? 'checked' : '' }}>
+                            <label class="form-check-label" for="onsale">{{ 'This product is on sale'|trans({}, 'bo.default') }}</label>
+                        </div>
 
-                        {% if form.isnew is defined %}
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" name="{{ form.isnew.vars.full_name }}" value="1" {{ form.isnew.vars.value ? 'checked' : '' }}>
-                                <label class="form-check-label">{{ form.isnew.vars.label }}</label>
-                            </div>
-                            {% do form.isnew.setRendered %}
-                        {% endif %}
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="isnew" name="isnew" value="1"
+                                   {{ fields.isnew ? 'checked' : '' }}>
+                            <label class="form-check-label" for="isnew">{{ 'This product is new'|trans({}, 'bo.default') }}</label>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="mb-3">
-                <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> {{ 'Save'|trans({}, 'bo.default') }}</button>
+                <button type="submit" class="btn btn-success" data-testid="easy-product-manager-price-save">
+                    <i class="bi bi-save" aria-hidden="true"></i> {{ 'Save'|trans }}
+                </button>
             </div>
-        {{ form_end(form) }}
+        </form>
     {% else %}
         <div class="alert alert-info">
             {{ 'This product has combinations. Please edit prices from the product page.'|trans({}, 'easyproductmanager') }}
@@ -268,6 +238,13 @@
                     update_price(price, this.dataset.priceType, this.dataset.relPrice);
                 });
             });
+        });
+
+        // Seed the taxed fields from the untaxed values the server sent.
+        document.querySelectorAll('input[data-price-type$="-without-tax"]').forEach(function (field) {
+            if (field.value !== '') {
+                update_price(field.value, field.dataset.priceType, field.dataset.relPrice);
+            }
         });
     }());
 </script>
