@@ -33,7 +33,7 @@
     }
 </style>
 
-<div id="module-easy-product-manager">
+<div id="module-easy-product-manager" data-token="{{ assignToken() }}">
 
     <div id="wrapper" class="container-fluid">
 
@@ -326,7 +326,8 @@
     <div class="modal fade" id="product_delete_dialog_modal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form id="product_delete_dialog" method="post" action="/admin/products/delete?_token={{ assignToken() }}">
+                <form id="product_delete_dialog" method="post" action="/admin/products/delete">
+                    <input type="hidden" name="_token" value="{{ assignToken() }}">
                     <div class="modal-header">
                         <h5 class="modal-title">{{ 'Delete product'|trans({}, 'easyproductmanager') }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -829,13 +830,16 @@
             });
 
             if (selectedIds.length > 0) {
-                fetch("{{ path('easy-product-manager_delete_selected') }}?_token={{ assignToken() }}", {
+                var body = new URLSearchParams();
+                selectedIds.forEach(function(productId) { body.append('product_ids[]', productId); });
+                body.append('_token', document.getElementById('module-easy-product-manager').dataset.token);
+
+                fetch("{{ path('easy-product-manager_delete_selected') }}", {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ product_ids: selectedIds })
+                    body: body
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(response) {
@@ -894,13 +898,17 @@
             });
 
             if (selectedIds.length > 0) {
-                fetch("{{ path('easy-product-manager_change_visibility_selected') }}?_token={{ assignToken() }}", {
+                var body = new URLSearchParams();
+                selectedIds.forEach(function(productId) { body.append('product_ids[]', productId); });
+                body.append('visibility', visibility);
+                body.append('_token', document.getElementById('module-easy-product-manager').dataset.token);
+
+                fetch("{{ path('easy-product-manager_change_visibility_selected') }}", {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ product_ids: selectedIds, visibility: visibility })
+                    body: body
                 })
                 .then(function(r) { return r.json(); })
                 .then(function() {
