@@ -863,9 +863,6 @@ class BackController extends BaseAdminController
         return (string) ($search['value'] ?? '');
     }
 
-    /**
-     * @throws \JsonException
-     */
     #[Route('/delete-selected', name: '_delete_selected', methods: ['POST'])]
     public function deleteSelectedAction(Request $request, TokenProvider $tokenProvider): Response
     {
@@ -875,11 +872,10 @@ class BackController extends BaseAdminController
 
         // Check CSRF token
         $tokenProvider->checkToken(
-            (string) $request->query->get('_token')
+            (string) $request->request->get('_token')
         );
 
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        $productIds = $data['product_ids'] ?? [];
+        $productIds = array_map('intval', $request->request->all('product_ids'));
 
         $deletedProducts = [];
         $notDeletedProducts = [];
@@ -905,9 +901,6 @@ class BackController extends BaseAdminController
         ]);
     }
 
-    /**
-     * @throws \JsonException
-     */
     #[Route('/change-visibility-selected', name: '_change_visibility_selected', methods: ['POST'])]
     public function changeVisibilitySelectedAction(Request $request, TokenProvider $tokenProvider): Response
     {
@@ -917,12 +910,11 @@ class BackController extends BaseAdminController
 
         // Check CSRF token
         $tokenProvider->checkToken(
-            (string) $request->query->get('_token')
+            (string) $request->request->get('_token')
         );
 
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        $productIds = $data['product_ids'] ?? [];
-        $visibility = (int) ($data['visibility'] ?? 0);
+        $productIds = array_map('intval', $request->request->all('product_ids'));
+        $visibility = (int) $request->request->get('visibility', 0);
 
         $updatedProducts = [];
         $notUpdatedProducts = [];
