@@ -573,8 +573,9 @@
         var $modalContent = $modal.find('.js-content');
         var $modalError = $modal.find('.js-error');
         var $modalSuccess = $modal.find('.js-success');
-        var bsEditModal = bootstrap.Modal.getOrCreateInstance($modal[0]);
-        var bsDeleteModal = bootstrap.Modal.getOrCreateInstance($modalDelete.closest('.modal')[0]);
+        // window.bootstrap is set by a deferred module script: read it lazily, never at load time
+        function bsEditModal() { return window.bootstrap.Modal.getOrCreateInstance($modal[0]); }
+        function bsDeleteModal() { return window.bootstrap.Modal.getOrCreateInstance($modalDelete.closest('.modal')[0]); }
 
         var filters = $module.find('.js-refresh-table');
         function refreshFilter()
@@ -635,7 +636,7 @@
                 }
             });
 
-            bsEditModal.show();
+            bsEditModal().show();
         });
 
         $modal.on('submit', 'form', function(event){
@@ -654,7 +655,7 @@
                     $modalLoader.hide();
 
                     setTimeout(function () {
-                        bsEditModal.hide();
+                        bsEditModal().hide();
                     }, 200);
                 },
                 error: function() {
@@ -666,7 +667,7 @@
 
         $modal.on('click', '.page-close-button', function(event){
             event.preventDefault();
-            bsEditModal.hide();
+            bsEditModal().hide();
         });
 
         table.on('change', '.js-action-visible', function(){
@@ -718,7 +719,7 @@
 
             var currentPosition = $(this).text();
 
-            popoverPosition = new bootstrap.Popover(this, {
+            popoverPosition = new window.bootstrap.Popover(this, {
                 html : true,
                 placement: 'auto',
                 title: 'Changer la position',
@@ -786,7 +787,7 @@
         table.on('click', '.js-action-delete', function(e){
             e.preventDefault();
             $modalDelete.find('#product_delete_id').val($(this).parents('tr').find('td:eq(1)').text());
-            bsDeleteModal.show();
+            bsDeleteModal().show();
         });
 
         $modalDelete.on('submit', function(e){
@@ -800,7 +801,7 @@
                     table.ajax.reload(null, false);
 
                     setTimeout(function () {
-                        bsDeleteModal.hide();
+                        bsDeleteModal().hide();
                     }, 200);
                 },
                 error: function() {
@@ -821,7 +822,7 @@
 
         // Handle delete selected items
         document.getElementById('delete-selected-items').addEventListener('click', function () {
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).show();
+            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).show();
         });
 
         document.getElementById('confirm-delete-selected').addEventListener('click', function () {
@@ -861,7 +862,7 @@
 
                     table.ajax.reload();
                     document.getElementById('select-all').checked = false;
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).hide();
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-delete-selected')).hide();
                 })
                 .catch(function(err) {
                     alert('Une erreur est survenue : ' + err);
@@ -875,12 +876,12 @@
 
         document.getElementById('activate-visibility-selected-items').addEventListener('click', function () {
             visibilityAction = 'activate';
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
+            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
         });
 
         document.getElementById('deactivate-visibility-selected-items').addEventListener('click', function () {
             visibilityAction = 'deactivate';
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
+            window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).show();
         });
 
         document.getElementById('confirm-visibility-selected').addEventListener('click', function () {
@@ -914,7 +915,7 @@
                 .then(function() {
                     table.ajax.reload();
                     document.getElementById('select-all').checked = false;
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).hide();
+                    window.bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-visibility-selected')).hide();
                 })
                 .catch(function(err) {
                     alert('Une erreur est survenue : ' + err);
