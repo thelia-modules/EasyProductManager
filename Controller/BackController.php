@@ -827,10 +827,12 @@ class BackController extends BaseAdminController
 
         if ($this->getOrderColumnName($request) === $this->productImageColFile) {
             $query->leftJoinProductImage('product_image')
-                ->withColumn('product_image.file', 'image_file')
+                ->join('product_image.ProductImageI18n product_image_i18n', Criteria::LEFT_JOIN)
+                ->addJoinCondition('product_image_i18n', 'product_image_i18n.locale = ?', $this->getLang($request)->getLocale())
+                ->withColumn('product_image_i18n.file', 'image_file')
                 ->withColumn('product_image.position', 'image_position');
 
-            $query->withColumn('IF(product_image.file IS NOT NULL AND product_image.file != "", 1, 0)', 'has_image');
+            $query->withColumn('IF(product_image_i18n.file IS NOT NULL AND product_image_i18n.file != "", 1, 0)', 'has_image');
             $query->orderBy('has_image', Criteria::DESC);
             $query->orderBy('image_position', Criteria::ASC);
             $query->orderBy('image_file', $this->getOrderDir($request));
